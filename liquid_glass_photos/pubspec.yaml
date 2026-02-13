@@ -1,0 +1,58 @@
+name: liquid_glass_photos
+description: "A photos app with iOS 26 Liquid Glass UI aesthetic"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  # Glass blur effects
+  blur: ^4.0.0
+  glass_kit: ^4.0.1
+  
+  # Photo/Video access
+  photo_manager: ^3.6.4
+  liquid_glass_easy: ^1.1.1
+  
+  # Image Rendering & Optimization
+  extended_image: ^8.2.0
+  keframe: ^3.0.0
+
+  photo_manager_image_provider: ^2.2.0
+
+  # Video playback
+  video_player: ^2.9.2
+  chewie: ^1.10.0
+  
+  # Image editing
+  image: ^4.5.2
+  image_editor: ^1.6.0
+  
+  # Navigation
+  go_router: ^14.8.1
+  
+  # State management
+  provider: ^6.1.2
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # Animations
+  flutter_animate: ^4.5.2
+  
+  share_plus: ^10.0.0
+  shared_preferences: ^2.2.2
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
