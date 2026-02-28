@@ -1,22 +1,14 @@
-import 'dart:ui';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:photo_manager/photo_manager.dart';
-import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
-import '../theme/glass_theme.dart';
 import '../providers/media_index_provider.dart';
 import '../providers/selection_provider.dart';
-import '../providers/album_provider.dart';
 import '../widgets/liquid_button.dart';
 import '../widgets/gallery_thumbnail.dart';
 import 'package:keframe/keframe.dart';
 import '../state/scroll_state_manager.dart';
 import 'package:share_plus/share_plus.dart';
-import '../core/config.dart';
 import '../core/config.dart';
 import '../models/media_item.dart';
 
@@ -263,6 +255,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
     
     if (xFiles.isNotEmpty) {
       await Share.shareXFiles(xFiles);
+      if (!mounted) return;
       context.read<SelectionProvider>().clearSelection(); // Exit select mode or clear
       context.read<SelectionProvider>().setSelectMode(false);
     }
@@ -293,7 +286,6 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
     final mediaItems = context.select<MediaIndexProvider, List<MediaItem>>((p) => p.mediaItems);
     
     // Empty state - surgical check
-    final indexProvider = context.read<MediaIndexProvider>();
     final isSelectMode = context.select<SelectionProvider, bool>((p) => p.isSelectMode);
     final hasFolders = context.select<MediaIndexProvider, bool>((p) => p.hasKnownPhotos);
     final isLoading = context.select<MediaIndexProvider, bool>((p) => p.isLoading);
@@ -393,7 +385,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                            // Selection Overlay
                                            if (selection.isSelectMode) ...[
                                              if (selection.isSelected)
-                                               Container(color: Colors.black.withOpacity(0.4)),
+                                               Container(color: Colors.black.withValues(alpha: 0.4)),
                                              Positioned(
                                                top: 6,
                                                right: 6,
@@ -404,7 +396,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                                    shape: BoxShape.circle,
                                                    color: selection.isSelected 
                                                      ? Colors.blue 
-                                                     : Colors.black.withOpacity(0.2),
+                                                     : Colors.black.withValues(alpha: 0.2),
                                                    border: Border.all(
                                                      color: Colors.white, 
                                                      width: 1.5
@@ -483,7 +475,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                 child: GestureDetector(
                   onTap: () => setState(() => _contextMenuItem = null),
                   behavior: HitTestBehavior.opaque,
-                  child: Container(color: Colors.black.withOpacity(0.4)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.4)),
                 ),
               ),
             // Scrim for Delete Confirmation
@@ -492,7 +484,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                 child: GestureDetector(
                   onTap: () => setState(() => _deleteConfirmItem = null),
                   behavior: HitTestBehavior.opaque,
-                  child: Container(color: Colors.black.withOpacity(0.4)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.4)),
                 ),
               ),
           ],
@@ -541,7 +533,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
               height: 60,
               blur: const LiquidGlassBlur(sigmaX: 12, sigmaY: 12),
               chromaticAberration: 0.0,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               shape: RoundedRectangleShape(cornerRadius: 30),
               position: LiquidGlassAlignPosition(
                 alignment: Alignment.bottomCenter,
@@ -557,20 +549,20 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                         onPressed: hasSelection ? _handleShare : null,
                         icon: Icon(
                           Icons.ios_share_rounded,
-                          color: hasSelection ? Colors.white : Colors.white.withOpacity(0.3),
+                          color: hasSelection ? Colors.white : Colors.white.withValues(alpha: 0.3),
                           size: 24,
                         ),
                       ),
                       Container(
                         width: 1,
                         height: 24,
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                       ),
                       IconButton(
                         onPressed: hasSelection ? _handleDeleteSelection : null,
                         icon: Icon(
                           Icons.delete_outline_rounded,
-                          color: hasSelection ? Colors.redAccent : Colors.white.withOpacity(0.3),
+                          color: hasSelection ? Colors.redAccent : Colors.white.withValues(alpha: 0.3),
                           size: 24,
                         ),
                       ),
@@ -614,7 +606,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
       width: menuWidth,
       height: menuHeight,
       blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-      color: Colors.white.withOpacity(0.1),
+      color: Colors.white.withValues(alpha: 0.1),
       shape: RoundedRectangleShape(cornerRadius: 24),
       chromaticAberration: 0.0,
       distortion: 0.05,
@@ -660,7 +652,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
       width: dialogWidth,
       height: dialogHeight,
       blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-      color: Colors.white.withOpacity(0.1),
+      color: Colors.white.withValues(alpha: 0.1),
       shape: RoundedRectangleShape(cornerRadius: 24),
       chromaticAberration: 0.0,
       distortion: 0.05,
@@ -673,7 +665,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.15),
+                color: Colors.redAccent.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
@@ -691,7 +683,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
             Text(
               'This photo will be moved to the trash.',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 13,
               ),
               textAlign: TextAlign.center,
@@ -705,9 +697,9 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.15)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                       ),
                       child: const Center(
                         child: Text('Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
@@ -786,7 +778,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     )
                   ],
@@ -815,8 +807,8 @@ class _TopVignette extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withOpacity(0.8),
-              Colors.black.withOpacity(0.0),
+              Colors.black.withValues(alpha: 0.8),
+              Colors.black.withValues(alpha: 0.0),
             ],
             stops: const [0.0, 1.0],
           ),
@@ -911,12 +903,12 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.photo_library_outlined, size: 60, color: Colors.white.withOpacity(0.3)),
+          Icon(Icons.photo_library_outlined, size: 60, color: Colors.white.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text(
             'No Photos',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               fontSize: 18,
             ),
           ),

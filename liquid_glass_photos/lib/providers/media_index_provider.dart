@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -318,8 +317,8 @@ class MediaIndexProvider extends ChangeNotifier {
       try {
         bool success = false;
         if (Platform.isIOS || Platform.isMacOS) {
-          final result = await PhotoManager.editor.darwin.favoriteAsset(entity: item.asset!, favorite: newState);
-          success = result != null;
+          await PhotoManager.editor.darwin.favoriteAsset(entity: item.asset!, favorite: newState);
+          success = true;
         } else {
           success = true;
         }

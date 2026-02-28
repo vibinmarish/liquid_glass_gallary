@@ -2,10 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide PerformanceOverlay;
 import 'package:provider/provider.dart';
-import 'package:photo_manager/photo_manager.dart';
 
-import 'theme/glass_theme.dart';
-import 'providers/media_index_provider.dart';
 import 'theme/glass_theme.dart';
 import 'providers/media_index_provider.dart';
 import 'providers/selection_provider.dart';

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +6,6 @@ import '../theme/glass_theme.dart';
 import '../providers/media_index_provider.dart';
 
 import '../providers/selection_provider.dart';
-import '../providers/album_provider.dart';
 import '../state/scroll_state_manager.dart';
 import '../widgets/glass_navigation_bar.dart';
 import 'library_screen.dart';
@@ -81,31 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
   
-  /// Build grid size menu item with check indicator
-  PopupMenuItem<int> _buildGridMenuItem(int columns, String label, bool isDark) {
-    final isSelected = _gridColumnCount == columns;
-    return PopupMenuItem<int>(
-      value: columns,
-      child: Row(
-        children: [
-          Icon(
-            isSelected ? Icons.check_circle : Icons.circle_outlined,
-            color: isSelected ? GlassColors.primary : (isDark ? Colors.white54 : Colors.black54),
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
+
   /// ⚡️ Show liquid glass styled menu for grid size selection
   void _toggleGridMenu() {
     setState(() => _showGridMenu = !_showGridMenu);
@@ -152,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Container(
               width: double.infinity,
               height: double.infinity,
-              color: Colors.black.withOpacity(0.35),
+              color: Colors.black.withValues(alpha: 0.35),
             ),
           ),
       ],
@@ -228,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     height: 70, 
                     blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
                     chromaticAberration: 0.0, // User requested 0
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     shape: RoundedRectangleShape(cornerRadius: 32),
                     position: LiquidGlassAlignPosition(
                       alignment: Alignment.bottomLeft,
@@ -252,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     height: 62,
                     blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
                     chromaticAberration: 0.0, 
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     shape: RoundedRectangleShape(cornerRadius: 32),
                     position: LiquidGlassAlignPosition(
                       alignment: Alignment.bottomRight,
@@ -274,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     width: 220,
                     height: 240,
                     blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     shape: RoundedRectangleShape(cornerRadius: 24),
                     chromaticAberration: 0.0,
                     distortion: 0.05,

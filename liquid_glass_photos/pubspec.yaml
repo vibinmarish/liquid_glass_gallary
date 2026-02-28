@@ -49,6 +49,7 @@ dependencies:
   shared_preferences: ^2.2.2
 
 
+  path_provider: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

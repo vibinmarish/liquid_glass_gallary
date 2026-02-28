@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +8,6 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import '../theme/glass_theme.dart';
 import '../providers/album_provider.dart';
 import '../providers/media_index_provider.dart';
-import '../models/media_item.dart';
 import 'album_detail_screen.dart';
 
 /// iOS 26 style Albums screen
@@ -145,7 +143,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> with AutomaticKeepAliveClie
                   onTap: () => setState(() => _showNewAlbumDialog = false),
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    color: Colors.black.withOpacity(0.35),
+                    color: Colors.black.withValues(alpha: 0.35),
                   ),
                 ),
             ],
@@ -157,7 +155,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> with AutomaticKeepAliveClie
                 width: 320,
                 height: 250,
                 blur: const LiquidGlassBlur(sigmaX: 20, sigmaY: 20),
-                color: isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2),
+                color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.2),
                 chromaticAberration: 0.0,
                 shape: RoundedRectangleShape(cornerRadius: 32),
                 position: const LiquidGlassAlignPosition(
@@ -185,7 +183,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> with AutomaticKeepAliveClie
                           hintText: 'Album Name',
                           hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
                           filled: true,
-                          fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
@@ -224,42 +222,6 @@ class _AlbumsScreenState extends State<AlbumsScreen> with AutomaticKeepAliveClie
   }
 }
 
-class _SliverSectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback? onSeeAll;
-  const _SliverSectionHeader({required this.title, this.onSeeAll});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-        child: Row(
-          children: [
-            Text(
-              title, 
-              style: TextStyle(
-                fontSize: 20, 
-                fontWeight: FontWeight.bold,
-                color: isDark ? GlassColors.textPrimaryDark : GlassColors.textPrimaryLight,
-              ),
-            ),
-            const Spacer(),
-            if (onSeeAll != null)
-              GestureDetector(
-                onTap: onSeeAll,
-                child: const Text(
-                  'See All', 
-                  style: TextStyle(color: GlassColors.accentBlue, fontSize: 15, fontWeight: FontWeight.w500),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _AlbumGridCard extends StatelessWidget {
   final Album album;
@@ -296,8 +258,8 @@ class _AlbumGridCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.1),
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withValues(alpha: 0.1),
+                      Colors.black.withValues(alpha: 0.7),
                     ],
                     stops: const [0.5, 0.7, 1.0],
                   ),
@@ -330,7 +292,7 @@ class _AlbumGridCard extends StatelessWidget {
                       return Text(
                         '$count items',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),

@@ -32,24 +32,24 @@ class GlassColors {
   static const textTertiaryDark = Color(0xFF636366);
 
   // Glass / Liquid Glass Effects (iOS 26 opacities)
-  static final glassLight = Colors.white.withOpacity(0.72);
-  static final glassDark = const Color(0xFF1C1C1E).withOpacity(0.72);
-  static final glassElevatedLight = Colors.white.withOpacity(0.85);
-  static final glassElevatedDark = const Color(0xFF2C2C2E).withOpacity(0.85);
+  static final glassLight = Colors.white.withValues(alpha: 0.72);
+  static final glassDark = const Color(0xFF1C1C1E).withValues(alpha: 0.72);
+  static final glassElevatedLight = Colors.white.withValues(alpha: 0.85);
+  static final glassElevatedDark = const Color(0xFF2C2C2E).withValues(alpha: 0.85);
 
   // Separators & Borders (ultra subtle)
   static const separatorLight = Color(0xFFC6C6C8);
   static const separatorDark = Color(0xFF3A3A3C);
 
   // Legacy compatibility tokens
-  static final glassWhite10 = Colors.white.withOpacity(0.10);
+  static final glassWhite10 = Colors.white.withValues(alpha: 0.10);
   static const surfaceDark = backgroundDark;
   static const surfaceLight = backgroundLight;
   static const surfaceLightDim = groupedLight;
   static const surfaceContainer = secondaryDark;
-  static final glassWhite20 = Colors.white.withOpacity(0.20);
-  static final glassWhite40 = Colors.white.withOpacity(0.40);
-  static final glassWhite60 = Colors.white.withOpacity(0.60);
+  static final glassWhite20 = Colors.white.withValues(alpha: 0.20);
+  static final glassWhite40 = Colors.white.withValues(alpha: 0.40);
+  static final glassWhite60 = Colors.white.withValues(alpha: 0.60);
 
   // Background helper
   static List<Color> ios26Background(BuildContext context) {

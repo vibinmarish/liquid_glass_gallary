@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +9,6 @@ import '../theme/glass_theme.dart';
 import '../providers/album_provider.dart';
 import '../providers/media_index_provider.dart';
 import '../models/media_item.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/liquid_button.dart';
 import 'gallery_viewer.dart';
 import 'package:share_plus/share_plus.dart';
@@ -237,9 +235,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         ? indexProvider.favoriteItems 
         : _mediaItems;
     
-    final screenSize = MediaQuery.of(context).size;
     final topPadding = MediaQuery.of(context).padding.top;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return PopScope(
       canPop: !_showViewer,
@@ -264,7 +260,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                     height: 40,
                     blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
                     chromaticAberration: 0.0,
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     shape: const RoundedRectangleShape(cornerRadius: 20),
                     position: LiquidGlassAlignPosition(
                       alignment: Alignment.topLeft,
@@ -311,7 +307,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                     height: 60,
                     blur: const LiquidGlassBlur(sigmaX: 12, sigmaY: 12),
                     chromaticAberration: 0.0,
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     shape: RoundedRectangleShape(cornerRadius: 30),
                     position: LiquidGlassAlignPosition(
                       alignment: Alignment.bottomCenter,
@@ -328,7 +324,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         Container(
                           width: 1,
                           height: 24,
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                         ),
                         _ToolbarAction(
                           icon: Icons.delete_outline_rounded, 
@@ -417,7 +413,7 @@ class _AlbumTopBar extends StatelessWidget {
                     ? (selectedCount > 0 ? '$selectedCount Selected' : 'Select Items')
                     : '$itemCount Items',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -544,26 +540,6 @@ class _EmptyState extends StatelessWidget {
 }
 
 /// Helper widgets for standard iOS 26 top bar layout
-class _GlassPillAction extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _GlassPillAction({required this.icon, required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.2), width: 0.5),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-}
 
 class _ToolbarAction extends StatelessWidget {
   final IconData icon;
@@ -586,7 +562,7 @@ class _ToolbarAction extends StatelessWidget {
         icon,
         color: isEnabled 
             ? (color ?? Colors.white) 
-            : Colors.white.withOpacity(0.3),
+            : Colors.white.withValues(alpha: 0.3),
         size: 24,
       ),
     );
@@ -610,8 +586,8 @@ class _TopVignette extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.black.withOpacity(0.1),
+                Colors.black.withValues(alpha: 0.4),
+                Colors.black.withValues(alpha: 0.1),
                 Colors.transparent,
               ],
               stops: const [0.0, 0.4, 1.0],

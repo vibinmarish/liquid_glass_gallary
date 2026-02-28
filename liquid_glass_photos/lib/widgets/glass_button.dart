@@ -64,7 +64,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultTint = GlassColors.accentBlue.withOpacity(isDark ? 0.3 : 0.15);
+    final defaultTint = GlassColors.accentBlue.withValues(alpha: isDark ? 0.3 : 0.15);
     
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -143,7 +143,7 @@ class _GlassIconButtonState extends State<GlassIconButton> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultBg = GlassColors.accentBlue.withOpacity(isDark ? 0.2 : 0.1);
+    final defaultBg = GlassColors.accentBlue.withValues(alpha: isDark ? 0.2 : 0.1);
     final defaultIconColor = isDark ? GlassColors.textPrimaryDark : GlassColors.textPrimaryLight;
 
     return RepaintBoundary(

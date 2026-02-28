@@ -38,8 +38,8 @@ class GlassCard extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.1),
+                Colors.white.withValues(alpha: 0.02),
                 Colors.transparent,
               ],
               stops: const [0.0, 0.3, 1.0],

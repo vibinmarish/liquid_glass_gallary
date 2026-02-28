@@ -13,7 +13,6 @@ import 'package:image_editor/image_editor.dart';
 
 import '../models/media_item.dart';
 import '../theme/glass_theme.dart';
-import '../widgets/glass_button.dart';
 
 enum AdjustTool {
   exposure,
@@ -98,7 +97,6 @@ class _EditScreenState extends State<EditScreen> {
   };
   
   // Interaction state
-  bool _isDragging = false;
   
   // Crop & Transform state
   // Crop & Transform state
@@ -110,7 +108,6 @@ class _EditScreenState extends State<EditScreen> {
   double _scale = 1.0;
   Offset _pan = Offset.zero;
   
-  int _selectedTool = 0; // Index within a category
   int _selectedCategory = 0; // 0: Styles, 1: Adjust, 2: Crop
   AdjustTool _selectedAdjustTool = AdjustTool.exposure;
   String? _selectedFilter = 'Original';
@@ -398,17 +395,18 @@ class _EditScreenState extends State<EditScreen> {
       await tempFile.writeAsBytes(result);
 
       // 4. Save to Gallery via PhotoManager (Your existing robust logic)
-      final AssetEntity? newEntity = await PhotoManager.editor.saveImageWithPath(
+      await PhotoManager.editor.saveImageWithPath(
         tempFile.path,
         title: fileName,
       );
 
-      if (newEntity != null && mounted) {
+      if (mounted) {
         Navigator.pop(context); // Close loader
         Navigator.pop(context, true); // Return success to viewer
         
         // Optional: Clean up temp file
-        try { await tempFile.delete(); } catch (_) {}
+        try { tempFile.delete(); } catch (_) {}
+        if (!mounted) return;
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Saved to Photos")),
@@ -546,7 +544,7 @@ class _EditScreenState extends State<EditScreen> {
               width: 280,
               height: 60,
               blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
-              color: Colors.black.withOpacity(0.1), // Match Library Screen exactly
+              color: Colors.black.withValues(alpha: 0.1), // Match Library Screen exactly
               shape: RoundedRectangleShape(cornerRadius: 32), // Match Library Screen (32)
               chromaticAberration: 0.0,
               distortion: 0.0,
@@ -573,7 +571,7 @@ class _EditScreenState extends State<EditScreen> {
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withValues(alpha: 0.3),
           padding: EdgeInsets.only(bottom: bottomPadding + 100), // Increased to prevent overlap with floating tabs
           child: Column(
             children: [
@@ -618,10 +616,15 @@ class _EditScreenState extends State<EditScreen> {
           onRatio: () {
              // Rotate ratios: Original -> Free -> Square -> 16:9
              setState(() {
-               if (_aspectRatio == -1) _aspectRatio = 0;
-               else if (_aspectRatio == 0) _aspectRatio = 1;
-               else if (_aspectRatio == 1) _aspectRatio = 16/9;
-               else _aspectRatio = -1;
+               if (_aspectRatio == -1) {
+                 _aspectRatio = 0;
+               } else if (_aspectRatio == 0) {
+                 _aspectRatio = 1;
+               } else if (_aspectRatio == 1) {
+                 _aspectRatio = 16/9;
+               } else {
+                 _aspectRatio = -1;
+               }
                
                _cropRect = _applyAspectRatio(_cropRect, _aspectRatio);
              });
@@ -654,8 +657,8 @@ class _EditTopBar extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.6),
-            Colors.black.withOpacity(0),
+            Colors.black.withValues(alpha: 0.6),
+            Colors.black.withValues(alpha: 0),
           ],
         ),
       ),
@@ -692,44 +695,6 @@ class _EditTopBar extends StatelessWidget {
 
 
 
-class _OrangePointer extends StatelessWidget {
-  final int selectedIndex;
-  const _OrangePointer({required this.selectedIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final tabWidth = screenWidth / 3;
-    final leftPadding = (tabWidth * selectedIndex) + (tabWidth / 2) - 6;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      padding: EdgeInsets.only(left: leftPadding),
-      alignment: Alignment.centerLeft,
-      child: CustomPaint(
-        size: const Size(12, 8),
-        painter: _TrianglePainter(),
-      ),
-    );
-  }
-}
-
-class _TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.orange.shade800;
-    final path = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _TabItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -741,7 +706,7 @@ class _TabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // White style as requested
-    final color = isSelected ? Colors.white : Colors.white.withOpacity(0.6);
+    final color = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6);
     
     return GestureDetector(
       onTap: onTap,
@@ -754,7 +719,7 @@ class _TabItem extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+              color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -796,7 +761,7 @@ class _StyleCarousel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white24),
           ),
@@ -900,11 +865,15 @@ class _StyleThumbnail extends StatelessWidget {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             double sum = 0;
-            for (int k = 0; k < 4; k++) sum += m1[i * 5 + k] * m2[k * 5 + j];
+            for (int k = 0; k < 4; k++) {
+              sum += m1[i * 5 + k] * m2[k * 5 + j];
+            }
             result[i * 5 + j] = sum;
         }
         double tSum = 0;
-        for (int k = 0; k < 4; k++) tSum += m1[i * 5 + k] * m2[k * 5 + 4];
+        for (int k = 0; k < 4; k++) {
+          tSum += m1[i * 5 + k] * m2[k * 5 + 4];
+        }
         result[i * 5 + 4] = tSum + m1[i * 5 + 4];
     }
 
@@ -940,19 +909,6 @@ class _StyleThumbnail extends StatelessWidget {
   }
 }
 
-class _DotMatrixPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white;
-    for (double i = 5; i < size.width; i += 10) {
-      for (double j = 5; j < size.height; j += 10) {
-        canvas.drawCircle(Offset(i, j), 1, paint);
-      }
-    }
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 class _AdjustPanel extends StatelessWidget {
   final AdjustTool selectedTool;
@@ -1007,7 +963,7 @@ class _AdjustPanel extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey.withOpacity(0.3),
+                          color: isSelected ? Colors.white.withValues(alpha: 0.9) : Colors.grey.withValues(alpha: 0.3),
                         ),
                         child: Icon(
                           tool.icon,
@@ -1107,7 +1063,7 @@ class _DialPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.5)
+      ..color = Colors.grey.withValues(alpha: 0.5)
       ..strokeWidth = 1.0
       ..strokeCap = StrokeCap.round;
 
@@ -1153,7 +1109,7 @@ class _DialPainter extends CustomPainter {
         double opacity = 1.0 - (dist / maxDist);
         opacity = opacity.clamp(0.0, 1.0);
         
-        paint.color = Colors.grey.withOpacity(0.5 * opacity);
+        paint.color = Colors.grey.withValues(alpha: 0.5 * opacity);
         
         canvas.drawLine(
             Offset(tickX, (size.height - height) / 2),
@@ -1182,7 +1138,7 @@ class _VignetteOverlay extends StatelessWidget {
           gradient: RadialGradient(
             colors: [
               Colors.transparent,
-              Colors.black.withOpacity(intensity.clamp(0.0, 1.0)),
+              Colors.black.withValues(alpha: intensity.clamp(0.0, 1.0)),
             ],
             stops: const [0.4, 1.0],
             radius: 1.2,
@@ -1268,7 +1224,7 @@ class _GlassIconButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -1310,12 +1266,19 @@ class _CropOverlayState extends State<_CropOverlay> {
     
     // Hit test corners (radius 30)
     const rad = 30.0;
-    if ((pos - screenRect.topLeft).distance < rad) _dragHandle = 1;
-    else if ((pos - screenRect.topRight).distance < rad) _dragHandle = 2;
-    else if ((pos - screenRect.bottomLeft).distance < rad) _dragHandle = 3;
-    else if ((pos - screenRect.bottomRight).distance < rad) _dragHandle = 4;
-    else if (screenRect.contains(pos)) _dragHandle = 0; // Check center last
-    else _dragHandle = -1;
+    if ((pos - screenRect.topLeft).distance < rad) {
+      _dragHandle = 1;
+    } else if ((pos - screenRect.topRight).distance < rad) {
+      _dragHandle = 2;
+    } else if ((pos - screenRect.bottomLeft).distance < rad) {
+      _dragHandle = 3;
+    } else if ((pos - screenRect.bottomRight).distance < rad) {
+      _dragHandle = 4;
+    } else if (screenRect.contains(pos)) {
+      _dragHandle = 0; // Check center last
+    } else {
+      _dragHandle = -1;
+    }
   }
 
   void _onDragUpdate(DragUpdateDetails details, Size size) {
@@ -1401,7 +1364,7 @@ class _GridPainter extends CustomPainter {
       rect.width * size.width, rect.height * size.height
     );
     
-    final paintObj = Paint()..color = Colors.black.withOpacity(0.5);
+    final paintObj = Paint()..color = Colors.black.withValues(alpha: 0.5);
     
     // Path operation: Screen - Crop
     final outerPath = Path()
@@ -1413,7 +1376,7 @@ class _GridPainter extends CustomPainter {
 
     // 2. Draw Grid
     final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(isDragging ? 0.6 : 0.3)
+      ..color = Colors.white.withValues(alpha: isDragging ? 0.6 : 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 

@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
-import '../theme/glass_theme.dart';
 
 /// A reusable button component with the Liquid Glass effect.
 /// 
@@ -19,7 +18,7 @@ class LiquidButton extends LiquidGlass {
     LiquidGlassShape? shape,
     required super.position,
   }) : super(
-         color: color ?? const Color(0x1A000000), // Colors.black.withOpacity(0.1)
+         color: color ?? const Color(0x1A000000), // Colors.black.withValues(alpha: 0.1)
          shape: shape ?? const RoundedRectangleShape(cornerRadius: 24),
        );
 }

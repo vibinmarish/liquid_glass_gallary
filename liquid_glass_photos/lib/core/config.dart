@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 /// Centralized configuration for Liquid Glass Photos
 class AppConfig {

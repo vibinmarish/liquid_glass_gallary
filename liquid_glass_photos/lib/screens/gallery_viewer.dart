@@ -1,9 +1,6 @@
-import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:extended_image/extended_image.dart';
-import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
@@ -52,7 +49,6 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
   
   // UI State
   bool _showControls = true;
-  bool _isDragging = false; // For gesture dismissal tracking if needed
   
   // Animations
   late AnimationController _fadeController;
@@ -119,16 +115,6 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
   }
 
   // --- Logic ---
-
-  void _startAutoHideTimer() {
-    // Cancel any existing timer? (Simulated by state check)
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && _showControls && !_isDragging) {
-        setState(() => _showControls = false);
-        _fadeController.reverse();
-      }
-    });
-  }
 
   void _toggleControls() {
     setState(() {
@@ -435,7 +421,7 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
               margin: const EdgeInsets.only(bottom: 34),
             ),
             shape: RoundedRectangleShape(cornerRadius: 30),
-            color: Colors.black.withOpacity(0.3), // Darker for pill
+            color: Colors.black.withValues(alpha: 0.3), // Darker for pill
             blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,

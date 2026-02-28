@@ -71,9 +71,6 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -81,7 +78,7 @@ class _NavBarItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: isSelected
             ? BoxDecoration(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(25),
               )
             : null,
@@ -91,14 +88,14 @@ class _NavBarItem extends StatelessWidget {
           children: [
             Icon(
               isSelected ? item.activeIcon : item.icon,
-              color: isSelected ? GlassColors.primary : Colors.white.withOpacity(0.8),
+              color: isSelected ? GlassColors.primary : Colors.white.withValues(alpha: 0.8),
               size: 22,
             ),
             const SizedBox(height: 2),
             Text(
               item.label,
               style: TextStyle(
-                color: isSelected ? GlassColors.primary : Colors.white.withOpacity(0.8),
+                color: isSelected ? GlassColors.primary : Colors.white.withValues(alpha: 0.8),
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),

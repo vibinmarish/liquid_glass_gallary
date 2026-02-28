@@ -3,7 +3,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/media_index_provider.dart';
-import '../theme/glass_theme.dart';
 
 /// A diagnostic overlay for performance monitoring.
 /// Shows FPS, Cache health, and memory pressure alerts.
@@ -65,7 +64,7 @@ class _PerformanceOverlayState extends State<PerformanceOverlay> with SingleTick
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
+                  color: Colors.black.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white24, width: 0.5),
                 ),
