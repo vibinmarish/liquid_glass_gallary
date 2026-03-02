@@ -7,18 +7,22 @@ import 'theme/glass_theme.dart';
 import 'providers/media_index_provider.dart';
 import 'providers/selection_provider.dart';
 import 'providers/album_provider.dart';
+import 'providers/ui_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/permission_screen.dart';
 import 'services/app_startup_service.dart';
 import 'state/scroll_state_manager.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 enum PhotoViewerState { idle, draggingVertical, zoomed }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await LiquidGlassWidgets.initialize();
+
   // Restore previous performance-oriented cache limits
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 300 * 1024 * 1024; // 300MB
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      300 * 1024 * 1024; // 300MB
   PaintingBinding.instance.imageCache.maximumSize = 2000; // Original high limit
 
   // Create provider BEFORE runApp so we can pass it via .value()
@@ -30,6 +34,7 @@ void main() async {
         ChangeNotifierProvider.value(value: mediaIndexProvider),
         ChangeNotifierProvider(create: (_) => SelectionProvider()),
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
+        ChangeNotifierProvider(create: (_) => UIProvider()),
         Provider(create: (_) => ScrollStateManager()),
         ChangeNotifierProvider(create: (_) => ViewerState()),
       ],
@@ -73,7 +78,7 @@ class _AppEntryState extends State<AppEntry> {
     try {
       final provider = context.read<MediaIndexProvider>();
       final hasPermission = await provider.checkPermission();
-      
+
       if (mounted) {
         setState(() {
           _hasPermission = hasPermission;
@@ -103,15 +108,15 @@ class _AppEntryState extends State<AppEntry> {
 
   Future<void> _requestPermission() async {
     if (kIsWeb) return;
-    
+
     final provider = context.read<MediaIndexProvider>();
     final granted = await provider.requestPermission();
-    
+
     if (mounted && granted) {
       setState(() {
         _hasPermission = true;
       });
-      
+
       // ⚡️ Start heavy work AFTER permission granted
       WidgetsBinding.instance.addPostFrameCallback((_) {
         AppStartupService.instance.postFirstFrame(
@@ -139,12 +144,10 @@ class _AppEntryState extends State<AppEntry> {
     if (_isChecking) {
       return Scaffold(
         backgroundColor: GlassColors.backgroundDark,
-        body: const Center(
-          child: CupertinoActivityIndicator(radius: 12),
-        ),
+        body: const Center(child: CupertinoActivityIndicator(radius: 12)),
       );
     }
-    
+
     // Permission denied - show permission screen
     if (!_hasPermission) {
       return PermissionScreen(
@@ -152,7 +155,7 @@ class _AppEntryState extends State<AppEntry> {
         onOpenSettings: _handleOpenSettings,
       );
     }
-    
+
     // ⚡️ Permission granted - show HomeScreen immediately
     // Heavy work starts via postFirstFrame callback
     return const HomeScreen();

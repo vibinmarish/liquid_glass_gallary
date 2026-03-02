@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../widgets/adaptive_glass_menu.dart';
 import '../theme/glass_theme.dart';
+import '../theme/glass_settings.dart';
 import '../providers/media_index_provider.dart';
 
 import '../providers/selection_provider.dart';
+import '../providers/ui_provider.dart';
+import '../widgets/glass_overlays.dart';
 import '../state/scroll_state_manager.dart';
-import '../widgets/glass_navigation_bar.dart';
 import 'library_screen.dart';
 import 'albums_screen.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:share_plus/share_plus.dart';
 import 'gallery_viewer.dart';
 import '../core/config.dart';
 
@@ -26,20 +30,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
-  int _gridColumnCount = AppConfig.defaultColumns; 
-  bool _showGridMenu = false;
-  
+  int _gridColumnCount = AppConfig.defaultColumns;
+  bool _isAppActive = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Initialize media provider and start change notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MediaIndexProvider>().initialize();
     });
   }
-  
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -48,13 +52,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasActive = _isAppActive;
+    _isAppActive = state == AppLifecycleState.resumed;
+    if (_isAppActive != wasActive && mounted) {
+      setState(() {});
+    }
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) context.read<MediaIndexProvider>().loadMedia();
       });
     }
   }
-  
+
   // No longer need _onViewerStateChanged as we'll use Consumer/Watch
 
   /// Build tab content - 2 tabs only
@@ -65,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           columnCount: _gridColumnCount,
           onPhotoTap: (mediaIndex) => _openViewer(mediaIndex),
           onSelectModeChanged: (val) {},
-          onColumnCountChanged: (cols) => setState(() => _gridColumnCount = cols),
+          onColumnCountChanged:
+              (cols) => setState(() => _gridColumnCount = cols),
         );
       case 1:
         return const AlbumsScreen();
@@ -74,24 +84,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           columnCount: _gridColumnCount,
           onPhotoTap: (mediaIndex) => _openViewer(mediaIndex),
           onSelectModeChanged: (val) {},
-          onColumnCountChanged: (cols) => setState(() => _gridColumnCount = cols),
+          onColumnCountChanged:
+              (cols) => setState(() => _gridColumnCount = cols),
         );
     }
   }
-  
 
-  /// ⚡️ Show liquid glass styled menu for grid size selection
-  void _toggleGridMenu() {
-    setState(() => _showGridMenu = !_showGridMenu);
-    if (_showGridMenu) HapticFeedback.mediumImpact();
-  }
-  
   /// Open photo viewer as overlay (not route push)
   void _openViewer(int mediaIndex) {
     context.read<ScrollStateManager>().savePosition('library_grid');
     context.read<ViewerState>().openViewer(mediaIndex, 'library_grid');
   }
-  
+
   /// Close viewer overlay
   void _closeViewer() {
     context.read<ViewerState>().closeViewer();
@@ -101,40 +105,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Stack(
       children: [
         // Solid background
-        Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-        ),
-        // Tab Content
+        Container(color: Theme.of(context).scaffoldBackgroundColor),
+        // Tab Content (raw — glass refracts through this)
         Consumer<ViewerState>(
-          builder: (context, viewerState, _) => Offstage(
-            offstage: viewerState.isViewerOpen,
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                _buildTabContent(0),
-                _buildTabContent(1),
-              ],
-            ),
-          ),
+          builder:
+              (context, viewerState, _) => Offstage(
+                offstage: viewerState.isViewerOpen,
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: [_buildTabContent(0), _buildTabContent(1)],
+                ),
+              ),
         ),
-
-        // Scrim for Grid Menu
-        if (_showGridMenu)
-          GestureDetector(
-            onTap: () => setState(() => _showGridMenu = false),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.black.withValues(alpha: 0.35),
-            ),
-          ),
       ],
     );
   }
 
-
-  
   /// Handle back button press
   bool _handleBackPress() {
     final selection = context.read<SelectionProvider>();
@@ -146,16 +132,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return true;
     }
 
-    if (_showGridMenu) {
-      setState(() => _showGridMenu = false);
-      return true;
-    }
-    
     if (selection.isSelectMode) {
       selection.setSelectMode(false);
       return true;
     }
-    
+
     if (_selectedIndex != 0) {
       scrollManager.savePosition('tab_$_selectedIndex');
       setState(() => _selectedIndex = 0);
@@ -165,15 +146,69 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return false;
   }
 
+  void _handleToggleSelectMode() {
+    final selection = context.read<SelectionProvider>();
+    selection.toggleSelectMode();
+    HapticFeedback.mediumImpact();
+  }
+
+  Future<void> _handleShare() async {
+    final selection = context.read<SelectionProvider>();
+    if (selection.selectedIds.isEmpty) return;
+
+    final indexProvider = context.read<MediaIndexProvider>();
+    final items =
+        indexProvider.mediaItems
+            .where((i) => selection.selectedIds.contains(i.id))
+            .toList();
+    if (items.isEmpty) return;
+
+    final List<XFile> xFiles = [];
+    HapticFeedback.mediumImpact();
+
+    for (final item in items) {
+      final file = await item.asset?.file;
+      if (file != null) {
+        xFiles.add(XFile(file.path));
+      }
+    }
+
+    if (xFiles.isNotEmpty) {
+      await Share.shareXFiles(xFiles);
+      if (!mounted) return;
+      context.read<SelectionProvider>().clearSelection();
+      context.read<SelectionProvider>().setSelectMode(false);
+    }
+  }
+
+  Future<void> _handleDeleteSelection() async {
+    final selection = context.read<SelectionProvider>();
+    if (selection.selectedIds.isEmpty) return;
+
+    await context.read<MediaIndexProvider>().deleteMediaItems(
+      selection.selectedIds,
+    );
+    selection.setSelectMode(false);
+    HapticFeedback.heavyImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // ⚡️ FIX: Selectors for UI visibility
-    final isSelectMode = context.select<SelectionProvider, bool>((p) => p.isSelectMode);
-    final isViewerOpen = context.select<ViewerState, bool>((p) => p.isViewerOpen);
-    
+    final isSelectMode = context.select<SelectionProvider, bool>(
+      (p) => p.isSelectMode,
+    );
+    final hasSelection = context.select<SelectionProvider, bool>(
+      (p) => p.selectedIds.isNotEmpty,
+    );
+    final isViewerOpen = context.select<ViewerState, bool>(
+      (p) => p.isViewerOpen,
+    );
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -188,99 +223,238 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         extendBody: true,
         body: Stack(
           children: [
-            LiquidGlassView(
-              backgroundWidget: _buildBackgroundContent(),
-              realTimeCapture: true,
-              useSync: true,
-              pixelRatio: 0.8,
-              children: [
-                // Navigation Bar - Only show if current glass is needed
-                // Navigation Bar - Only show if current glass is needed
-                if (!isSelectMode && !isViewerOpen)
-                  LiquidGlass(
-                    width: 200, 
-                    height: 70, 
-                    blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
-                    chromaticAberration: 0.0, // User requested 0
-                    color: Colors.black.withValues(alpha: 0.1),
-                    shape: RoundedRectangleShape(cornerRadius: 32),
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.bottomLeft,
-                      margin: EdgeInsets.only(bottom: 25 + bottomPadding, left: 24),
-                    ),
-                    child: GlassNavigationBar(
-                      selectedIndex: _selectedIndex,
-                      onItemSelected: (index) {
-                        final scrollManager = context.read<ScrollStateManager>();
-                        scrollManager.savePosition('tab_$_selectedIndex');
-                        HapticFeedback.selectionClick();
-                        setState(() => _selectedIndex = index);
-                        scrollManager.restorePosition('tab_$index');
-                      },
-                    ),
-                  ),
-                
-                if (!isSelectMode && !isViewerOpen && _selectedIndex == 0)
-                  LiquidGlass(
-                    width: 62,
-                    height: 62,
-                    blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
-                    chromaticAberration: 0.0, 
-                    color: Colors.black.withValues(alpha: 0.1),
-                    shape: RoundedRectangleShape(cornerRadius: 32),
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.bottomRight,
-                      margin: EdgeInsets.only(bottom: 32 + bottomPadding, right: 24),
-                    ),
-                    child: GestureDetector(
-                      onTap: _toggleGridMenu,
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        color: isDark ? Colors.white : Colors.black87,
-                        size: 24,
-                      ),
-                    ),
-                  ),
+            LiquidGlassScope.stack(
+              background: _buildBackgroundContent(),
+              content: Stack(
+                children: [
+                  // Root glass layer — all children inherit these settings
+                  AdaptiveLiquidGlassLayer(
+                    quality: GlassQuality.premium,
+                    settings: AppGlassSettings.bottomBar,
+                    child: Stack(
+                      children: [
+                        // Grid Size Menu
+                        if (!isSelectMode &&
+                            !isViewerOpen &&
+                            _selectedIndex == 0)
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                bottom: 25 + bottomPadding,
+                                right: 16,
+                              ),
+                                  child: AdaptiveGlassMenu(
+                                    alignment: Alignment.bottomRight,
+                                    menuWidth: 220,
+                                    menuBorderRadius: 24,
+                                    glassSettings: AppGlassSettings.menu,
+                                    triggerBuilder: (context, toggleMenu) {
+                                  return GlassButton(
+                                    width: 70,
+                                    height: 70,
+                                    icon: Icons.grid_view_rounded,
+                                    iconColor:
+                                        isDark ? Colors.white : Colors.black87,
+                                    onTap: toggleMenu,
+                                    shape: const LiquidRoundedSuperellipse(
+                                      borderRadius: 35,
+                                    ),
+                                  );
+                                },
+                                items: [
+                                  for (int i = 3; i <= 6; i++)
+                                    GlassMenuItem(
+                                      title: '$i Columns',
+                                      icon:
+                                          _gridColumnCount == i
+                                              ? Icons.check_circle
+                                              : Icons.circle_outlined,
+                                      onTap: () {
+                                        setState(() => _gridColumnCount = i);
+                                        HapticFeedback.mediumImpact();
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
 
-                // Floating Grid Size Menu
-                if (_showGridMenu)
-                  LiquidGlass(
-                    width: 220,
-                    height: 240,
-                    blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: RoundedRectangleShape(cornerRadius: 24),
-                    chromaticAberration: 0.0,
-                    distortion: 0.05,
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.bottomRight,
-                      margin: EdgeInsets.only(bottom: 104 + bottomPadding, right: 24),
-                    ),
-                    child: _GridSizeMenu(
-                      currentColumns: _gridColumnCount,
-                      onChanged: (cols) {
-                        setState(() {
-                          _gridColumnCount = cols;
-                          _showGridMenu = false;
-                        });
-                        HapticFeedback.mediumImpact();
-                      },
+                        // Select Button (Global)
+                        if (!isViewerOpen && _selectedIndex == 0)
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                top: topPadding + 16,
+                                right: 16,
+                              ),
+                                child: GlassButton.custom(
+                                  width: 80,
+                                  height: 40,
+                                  onTap: _handleToggleSelectMode,
+                                  shape: const LiquidRoundedRectangle(
+                                    borderRadius: 20,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      isSelectMode ? 'Cancel' : 'Select',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ),
+                          ),
+
+                        // Global Overlays (Context Menu, Delete Confirm, New Album)
+                        Consumer<UIProvider>(
+                          builder: (context, ui, _) {
+                            return Stack(
+                              children: [
+                                if (ui.contextMenuItem != null &&
+                                    ui.contextMenuPosition != null)
+                                  ContextMenuOverlay(
+                                    item: ui.contextMenuItem!,
+                                    position: ui.contextMenuPosition!,
+                                    screenSize: MediaQuery.of(context).size,
+                                  ),
+                                if (ui.deleteConfirmItem != null)
+                                  DeleteConfirmOverlay(
+                                    item: ui.deleteConfirmItem!,
+                                  ),
+                                if (ui.showNewAlbumDialog)
+                                  const NewAlbumDialogOverlay(),
+                              ],
+                            );
+                          },
+                        ),
+
+                        // 1. Navigation Bar (Sharing Layer)
+                        if (!isSelectMode && !isViewerOpen)
+                          Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                bottom: 25 + bottomPadding,
+                                left: 16,
+                              ),
+                              child: SizedBox(
+                                width: 200,
+                                child: GlassBottomBar(
+                                  useOwnLayer: false,
+                                  barHeight: 70,
+                                  verticalPadding: 0,
+                                  horizontalPadding: 0,
+                                  barBorderRadius: 32,
+                                  selectedIconColor: GlassColors.primary,
+                                  unselectedIconColor: const Color(0xE6FFFFFF),
+                                  tabs: const [
+                                    GlassBottomBarTab(
+                                      label: 'Library',
+                                      icon: Icons.photo_library_outlined,
+                                      selectedIcon: Icons.photo_library,
+                                    ),
+                                    GlassBottomBarTab(
+                                      label: 'Albums',
+                                      icon: Icons.photo_album_outlined,
+                                      selectedIcon: Icons.photo_album,
+                                    ),
+                                  ],
+                                  selectedIndex: _selectedIndex,
+                                  onTabSelected: (index) {
+                                    final scrollManager =
+                                        context.read<ScrollStateManager>();
+                                    scrollManager.savePosition(
+                                      'tab_$_selectedIndex',
+                                    );
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _selectedIndex = index);
+                                    scrollManager.restorePosition('tab_$index');
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // 2. Selection Toolbar (Sharing Layer)
+                        if (isSelectMode && !isViewerOpen)
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                bottom: 32 + bottomPadding,
+                              ),
+                              child: GlassContainer(
+                                width: 140,
+                                height: 64,
+                                useOwnLayer: true,
+                                quality: GlassQuality.premium,
+                                settings: AppGlassSettings.menu,
+                                shape: const LiquidRoundedSuperellipse(
+                                  borderRadius: 32,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    GlassIconButton(
+                                      onPressed:
+                                          hasSelection ? _handleShare : null,
+                                      icon: Icons.ios_share_rounded,
+                                      size: 44,
+                                      iconSize: 24,
+                                      quality: GlassQuality.premium,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 24,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                    ),
+                                    GlassIconButton(
+                                      onPressed:
+                                          hasSelection
+                                              ? _handleDeleteSelection
+                                              : null,
+                                      icon: Icons.delete_outline_rounded,
+                                      size: 44,
+                                      iconSize: 24,
+                                      glowColor: Colors.redAccent,
+                                      quality: GlassQuality.premium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
 
             // Viewer Overlay
             Consumer<ViewerState>(
               builder: (context, viewerState, _) {
                 if (!viewerState.isViewerOpen) return const SizedBox.shrink();
-                
+
                 // ⚡️ PERFORMANCE: Use surgical cache for viewer (Select to listen for updates)
-                final assets = context.select<MediaIndexProvider, List<AssetEntity>>((p) => p.cachedAssets);
+                final assets = context
+                    .select<MediaIndexProvider, List<AssetEntity>>(
+                      (p) => p.cachedAssets,
+                    );
 
                 if (assets.isEmpty) {
-                   WidgetsBinding.instance.addPostFrameCallback((_) => _closeViewer());
-                   return const SizedBox.shrink();
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _closeViewer(),
+                  );
+                  return const SizedBox.shrink();
                 }
 
                 // ⚡️ PERFORMANCE: Viewer now manages its own data link to MediaIndexProvider
@@ -290,78 +464,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   onClose: _closeViewer,
                 );
               },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GridSizeMenu extends StatelessWidget {
-  final int currentColumns;
-  final ValueChanged<int> onChanged;
-
-  const _GridSizeMenu({
-    required this.currentColumns,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildMenuItem(
-            columns: 3,
-            label: '3 Columns',
-          ),
-          const Divider(height: 1, color: Colors.white24),
-          _buildMenuItem(
-            columns: 4,
-            label: '4 Columns',
-          ),
-          const Divider(height: 1, color: Colors.white24),
-          _buildMenuItem(
-            columns: 5,
-            label: '5 Columns',
-          ),
-          const Divider(height: 1, color: Colors.white24),
-          _buildMenuItem(
-            columns: 6,
-            label: '6 Columns',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required int columns,
-    required String label,
-  }) {
-    final isSelected = currentColumns == columns;
-    return InkWell(
-      onTap: () => onChanged(columns),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? GlassColors.primary : Colors.white60,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
             ),
           ],
         ),

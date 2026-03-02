@@ -10,9 +10,7 @@ class AppStartupService {
 
   /// ⚡️ HEAVY – must run AFTER first frame renders
   /// Called from HomeScreen/LibraryScreen initState via addPostFrameCallback
-  void postFirstFrame({
-    required MediaIndexProvider mediaProvider,
-  }) {
+  void postFirstFrame({required MediaIndexProvider mediaProvider}) {
     if (_started) return;
     _started = true;
 

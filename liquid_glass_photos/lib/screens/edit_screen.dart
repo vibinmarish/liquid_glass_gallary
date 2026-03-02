@@ -1,11 +1,11 @@
 import 'dart:io';
-import 'dart:ui' as ui;
+
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:path_provider/path_provider.dart'; // For temp file
 import 'package:photo_manager/photo_manager.dart'; // For saving to gallery
@@ -13,6 +13,7 @@ import 'package:image_editor/image_editor.dart';
 
 import '../models/media_item.dart';
 import '../theme/glass_theme.dart';
+import '../theme/glass_settings.dart';
 
 enum AdjustTool {
   exposure,
@@ -33,48 +34,78 @@ enum AdjustTool {
 
   String get name {
     switch (this) {
-      case AdjustTool.exposure: return 'Exposure';
-      case AdjustTool.brilliance: return 'Brilliance';
-      case AdjustTool.highlights: return 'Highlights';
-      case AdjustTool.shadows: return 'Shadows';
-      case AdjustTool.contrast: return 'Contrast';
-      case AdjustTool.brightness: return 'Brightness';
-      case AdjustTool.blackPoint: return 'Black Point';
-      case AdjustTool.saturation: return 'Saturation';
-      case AdjustTool.vibrance: return 'Vibrance';
-      case AdjustTool.warmth: return 'Warmth';
-      case AdjustTool.tint: return 'Tint';
-      case AdjustTool.sharpness: return 'Sharpness';
-      case AdjustTool.definition: return 'Definition';
-      case AdjustTool.noiseReduction: return 'Noise Reduction';
-      case AdjustTool.vignette: return 'Vignette';
+      case AdjustTool.exposure:
+        return 'Exposure';
+      case AdjustTool.brilliance:
+        return 'Brilliance';
+      case AdjustTool.highlights:
+        return 'Highlights';
+      case AdjustTool.shadows:
+        return 'Shadows';
+      case AdjustTool.contrast:
+        return 'Contrast';
+      case AdjustTool.brightness:
+        return 'Brightness';
+      case AdjustTool.blackPoint:
+        return 'Black Point';
+      case AdjustTool.saturation:
+        return 'Saturation';
+      case AdjustTool.vibrance:
+        return 'Vibrance';
+      case AdjustTool.warmth:
+        return 'Warmth';
+      case AdjustTool.tint:
+        return 'Tint';
+      case AdjustTool.sharpness:
+        return 'Sharpness';
+      case AdjustTool.definition:
+        return 'Definition';
+      case AdjustTool.noiseReduction:
+        return 'Noise Reduction';
+      case AdjustTool.vignette:
+        return 'Vignette';
     }
   }
 
   IconData get icon {
     switch (this) {
-      case AdjustTool.exposure: return Icons.exposure;
-      case AdjustTool.brilliance: return Icons.flare;
-      case AdjustTool.highlights: return Icons.highlight;
-      case AdjustTool.shadows: return Icons.nights_stay;
-      case AdjustTool.contrast: return Icons.contrast;
-      case AdjustTool.brightness: return Icons.brightness_6;
-      case AdjustTool.blackPoint: return Icons.point_of_sale; // Placeholder
-      case AdjustTool.saturation: return Icons.stream; // Placeholder
-      case AdjustTool.vibrance: return Icons.blur_on;
-      case AdjustTool.warmth: return Icons.thermostat;
-      case AdjustTool.tint: return Icons.color_lens;
-      case AdjustTool.sharpness: return Icons.details;
-      case AdjustTool.definition: return Icons.high_quality;
-      case AdjustTool.noiseReduction: return Icons.graphic_eq;
-      case AdjustTool.vignette: return Icons.vignette;
+      case AdjustTool.exposure:
+        return Icons.exposure;
+      case AdjustTool.brilliance:
+        return Icons.flare;
+      case AdjustTool.highlights:
+        return Icons.highlight;
+      case AdjustTool.shadows:
+        return Icons.nights_stay;
+      case AdjustTool.contrast:
+        return Icons.contrast;
+      case AdjustTool.brightness:
+        return Icons.brightness_6;
+      case AdjustTool.blackPoint:
+        return Icons.point_of_sale; // Placeholder
+      case AdjustTool.saturation:
+        return Icons.stream; // Placeholder
+      case AdjustTool.vibrance:
+        return Icons.blur_on;
+      case AdjustTool.warmth:
+        return Icons.thermostat;
+      case AdjustTool.tint:
+        return Icons.color_lens;
+      case AdjustTool.sharpness:
+        return Icons.details;
+      case AdjustTool.definition:
+        return Icons.high_quality;
+      case AdjustTool.noiseReduction:
+        return Icons.graphic_eq;
+      case AdjustTool.vignette:
+        return Icons.vignette;
     }
   }
 }
 
 class EditScreen extends StatefulWidget {
   final MediaItem mediaItem;
-  
+
   const EditScreen({super.key, required this.mediaItem});
 
   @override
@@ -84,7 +115,7 @@ class EditScreen extends StatefulWidget {
 class _EditScreenState extends State<EditScreen> {
   File? _file;
   bool _isSaving = false;
-  
+
   // Base values from filters
   double _baseBrightness = 0.0;
   double _baseContrast = 1.0;
@@ -95,34 +126,58 @@ class _EditScreenState extends State<EditScreen> {
   final Map<AdjustTool, double> _adjustmentValues = {
     for (var tool in AdjustTool.values) tool: 0.0,
   };
-  
+
   // Interaction state
-  
+
   // Crop & Transform state
   // Crop & Transform state
   Rect _cropRect = const Rect.fromLTWH(0, 0, 1, 1);
   double _straightenAngle = 0.0; // Radians
   int _quarterTurns = 0;
   bool _isFlipped = false;
-  double _aspectRatio = -1; 
+  double _aspectRatio = -1;
   double _scale = 1.0;
   Offset _pan = Offset.zero;
-  
+
   int _selectedCategory = 0; // 0: Styles, 1: Adjust, 2: Crop
   AdjustTool _selectedAdjustTool = AdjustTool.exposure;
   String? _selectedFilter = 'Original';
-  
+
   final List<Map<String, dynamic>> _styleFilters = [
-    {'name': 'Original', 'matrix': [0.0, 1.0, 1.0, 0.0]},
-    {'name': 'Vivid', 'matrix': [0.1, 1.2, 1.3, 0.0]},
-    {'name': 'Warm', 'matrix': [0.05, 1.0, 1.0, 0.3]},
-    {'name': 'Cool', 'matrix': [0.0, 1.0, 0.9, -0.3]},
-    {'name': 'B&W', 'matrix': [0.0, 1.1, 0.0, 0.0]},
-    {'name': 'Vintage', 'matrix': [0.0, 0.9, 0.7, 0.2]},
-    {'name': 'Dramatic', 'matrix': [-0.1, 1.4, 0.8, 0.0]},
-    {'name': 'Fade', 'matrix': [0.1, 0.8, 0.85, 0.0]},
+    {
+      'name': 'Original',
+      'matrix': [0.0, 1.0, 1.0, 0.0],
+    },
+    {
+      'name': 'Vivid',
+      'matrix': [0.1, 1.2, 1.3, 0.0],
+    },
+    {
+      'name': 'Warm',
+      'matrix': [0.05, 1.0, 1.0, 0.3],
+    },
+    {
+      'name': 'Cool',
+      'matrix': [0.0, 1.0, 0.9, -0.3],
+    },
+    {
+      'name': 'B&W',
+      'matrix': [0.0, 1.1, 0.0, 0.0],
+    },
+    {
+      'name': 'Vintage',
+      'matrix': [0.0, 0.9, 0.7, 0.2],
+    },
+    {
+      'name': 'Dramatic',
+      'matrix': [-0.1, 1.4, 0.8, 0.0],
+    },
+    {
+      'name': 'Fade',
+      'matrix': [0.1, 0.8, 0.85, 0.0],
+    },
   ];
-  
+
   @override
   void initState() {
     super.initState();
@@ -130,7 +185,7 @@ class _EditScreenState extends State<EditScreen> {
       _loadFile();
     }
   }
-  
+
   double? _imageWidth;
   double? _imageHeight;
 
@@ -147,7 +202,7 @@ class _EditScreenState extends State<EditScreen> {
     }
   }
   // ... (keeping existing methods)
-  
+
   void _applyFilter(String name) {
     final filter = _styleFilters.firstWhere((f) => f['name'] == name);
     final values = filter['matrix'] as List<double>;
@@ -160,28 +215,24 @@ class _EditScreenState extends State<EditScreen> {
     });
     HapticFeedback.selectionClick();
   }
-  
+
   double _autoScaleForRotation(double angle) {
     return 1.0 / (math.cos(angle.abs()));
   }
 
   Rect _applyAspectRatio(Rect r, double ratio) {
-      if (ratio <= 0) return r;
+    if (ratio <= 0) return r;
 
-      final center = r.center;
-      double w = r.width;
-      double h = w / ratio;
+    final center = r.center;
+    double w = r.width;
+    double h = w / ratio;
 
-      if (h > r.height) {
-        h = r.height;
-        w = h * ratio;
-      }
+    if (h > r.height) {
+      h = r.height;
+      w = h * ratio;
+    }
 
-      return Rect.fromCenter(
-        center: center,
-        width: w,
-        height: h,
-      );
+    return Rect.fromCenter(center: center, width: w, height: h);
   }
 
   void _resetCrop() {
@@ -195,17 +246,33 @@ class _EditScreenState extends State<EditScreen> {
       _aspectRatio = -1;
     });
   }
-  
+
   List<double> _saturationMatrix(double s) {
     const lumR = 0.2126;
     const lumG = 0.7152;
     const lumB = 0.0722;
 
     return [
-      lumR * (1 - s) + s, lumG * (1 - s),     lumB * (1 - s),     0, 0,
-      lumR * (1 - s),     lumG * (1 - s) + s, lumB * (1 - s),     0, 0,
-      lumR * (1 - s),     lumG * (1 - s),     lumB * (1 - s) + s, 0, 0,
-      0,                  0,                  0,                 1, 0,
+      lumR * (1 - s) + s,
+      lumG * (1 - s),
+      lumB * (1 - s),
+      0,
+      0,
+      lumR * (1 - s),
+      lumG * (1 - s) + s,
+      lumB * (1 - s),
+      0,
+      0,
+      lumR * (1 - s),
+      lumG * (1 - s),
+      lumB * (1 - s) + s,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
     ];
   }
 
@@ -233,84 +300,119 @@ class _EditScreenState extends State<EditScreen> {
     // Simplified approximation:
     // +t (Magenta) -> Boost R & B, Limit G
     // -t (Green) -> Boost G, Limit R & B
-    
+
     // R G B A W
     return [
-      1.0 + t * 0.5, 0.0, 0.0, 0.0, 0.0,
-      0.0, 1.0 - t * 0.5, 0.0, 0.0, 0.0,
-      0.0, 0.0, 1.0 + t * 0.5, 0.0, 0.0,
-      0.0, 0.0, 0.0, 1.0, 0.0,
+      1.0 + t * 0.5,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0 - t * 0.5,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0 + t * 0.5,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ];
   }
 
   List<double> _calculateColorMatrix() {
     // Additive logic: Filters set base, Sliders apply offsets
-    
+
     // 1. Exposure / Brightness / Brilliance / Highlights / Shadows
     double exposure = _adjustmentValues[AdjustTool.exposure] ?? 0;
     double brightness = _adjustmentValues[AdjustTool.brightness] ?? 0;
     double brilliance = _adjustmentValues[AdjustTool.brilliance] ?? 0;
     double highlights = _adjustmentValues[AdjustTool.highlights] ?? 0;
     double shadows = _adjustmentValues[AdjustTool.shadows] ?? 0;
-    
+
     // Brilliance affects both brightness and contrast
     // Highlights simply pulls down brightness for now (approx)
     // Shadows boosts brightness for now (approx)
-    
-    double b = _baseBrightness 
-             + exposure 
-             + (brightness * 0.6)
-             + (brilliance * 0.4)
-             - (highlights * 0.3) // Highlights recovery -> darken
-             + (shadows * 0.3);   // Shadows boost -> lighten
+
+    double b =
+        _baseBrightness +
+        exposure +
+        (brightness * 0.6) +
+        (brilliance * 0.4) -
+        (highlights * 0.3) // Highlights recovery -> darken
+        +
+        (shadows * 0.3); // Shadows boost -> lighten
 
     // 2. Contrast / Black Point
     double contrast = _adjustmentValues[AdjustTool.contrast] ?? 0;
     double blackPoint = _adjustmentValues[AdjustTool.blackPoint] ?? 0;
-    
+
     // Proxies for Detail tools
     double sharpness = _adjustmentValues[AdjustTool.sharpness] ?? 0;
     double definition = _adjustmentValues[AdjustTool.definition] ?? 0;
     double noiseReduction = _adjustmentValues[AdjustTool.noiseReduction] ?? 0;
-    
+
     // Sharpness/Definition boost contrast slightly to simulate pop
     // Noise reduction reduces contrast slightly
-    
-    double c = _baseContrast 
-             * (1.0 + contrast 
-                    + (brilliance * 0.2) 
-                    + (blackPoint * 0.5)
-                    + (sharpness * 0.1)
-                    + (definition * 0.1)
-                    - (noiseReduction * 0.1)
-               );
+
+    double c =
+        _baseContrast *
+        (1.0 +
+            contrast +
+            (brilliance * 0.2) +
+            (blackPoint * 0.5) +
+            (sharpness * 0.1) +
+            (definition * 0.1) -
+            (noiseReduction * 0.1));
 
     // 3. Saturation / Vibrance
     double saturation = _adjustmentValues[AdjustTool.saturation] ?? 0;
     double vibrance = _adjustmentValues[AdjustTool.vibrance] ?? 0;
-    
+
     double s = _baseSaturation * (1.0 + saturation + (vibrance * 0.5));
 
     // 4. Color: Warmth / Tint
     double warmth = _adjustmentValues[AdjustTool.warmth] ?? 0;
     double tint = _adjustmentValues[AdjustTool.tint] ?? 0;
-    
+
     double w = _baseWarmth + warmth;
 
     // Base Matrix (Contrast + Brightness + Warmth)
     final List<double> base = [
-      c, 0.0, 0.0, 0.0, b * 100 + w * 20,
-      0.0, c, 0.0, 0.0, b * 100,
-      0.0, 0.0, c, 0.0, b * 100 - w * 20,
-      0.0, 0.0, 0.0, 1.0, 0.0,
+      c,
+      0.0,
+      0.0,
+      0.0,
+      b * 100 + w * 20,
+      0.0,
+      c,
+      0.0,
+      0.0,
+      b * 100,
+      0.0,
+      0.0,
+      c,
+      0.0,
+      b * 100 - w * 20,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ];
 
     // Saturation Matrix
     final satMatrix = _saturationMatrix(s);
-    
+
     // Tint Matrix
     final tintM = _tintMatrix(tint);
-    
+
     // Compose: Base * Saturation * Tint
     final m1 = _multiplyMatrices(base, satMatrix);
     return _multiplyMatrices(m1, tintM);
@@ -344,7 +446,10 @@ class _EditScreenState extends State<EditScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (c) => const Center(child: CircularProgressIndicator(color: GlassColors.primary)),
+      builder:
+          (c) => const Center(
+            child: CircularProgressIndicator(color: GlassColors.primary),
+          ),
     );
 
     try {
@@ -355,22 +460,25 @@ class _EditScreenState extends State<EditScreen> {
       // Calculate normalized crop to pixel coordinates
       // We use the original image dimensions (_imageWidth/Height)
       if (_cropRect != const Rect.fromLTWH(0, 0, 1, 1) && _imageWidth != null) {
-        option.addOption(ClipOption(
-          x: (_cropRect.left * _imageWidth!).round(),
-          y: (_cropRect.top * _imageHeight!).round(),
-          width: (_cropRect.width * _imageWidth!).round(),
-          height: (_cropRect.height * _imageHeight!).round(),
-        ));
+        option.addOption(
+          ClipOption(
+            x: (_cropRect.left * _imageWidth!).round(),
+            y: (_cropRect.top * _imageHeight!).round(),
+            width: (_cropRect.width * _imageWidth!).round(),
+            height: (_cropRect.height * _imageHeight!).round(),
+          ),
+        );
       }
 
       // B. Apply Rotation & Flip
       // Note: Native rotation is usually clockwise
       if (_quarterTurns != 0 || _straightenAngle != 0) {
         // Combine discrete 90-degree turns with fine rotation
-        final degrees = (_quarterTurns * 90) + (_straightenAngle * 180 / math.pi);
+        final degrees =
+            (_quarterTurns * 90) + (_straightenAngle * 180 / math.pi);
         if (degrees != 0) option.addOption(RotateOption(degrees.round()));
       }
-      
+
       if (_isFlipped) {
         option.addOption(const FlipOption(horizontal: true));
       }
@@ -403,20 +511,24 @@ class _EditScreenState extends State<EditScreen> {
       if (mounted) {
         Navigator.pop(context); // Close loader
         Navigator.pop(context, true); // Return success to viewer
-        
+
         // Optional: Clean up temp file
-        try { tempFile.delete(); } catch (_) {}
+        try {
+          tempFile.delete();
+        } catch (_) {}
         if (!mounted) return;
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Saved to Photos")),
-        );
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Saved to Photos")));
       }
     } catch (e) {
       debugPrint("Save error: $e");
       if (mounted) {
         Navigator.pop(context); // Close loader
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -428,66 +540,98 @@ class _EditScreenState extends State<EditScreen> {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     const bottomPanelHeight = 280.0;
-    
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: LiquidGlassView(
-        realTimeCapture: true, // Necessary for dynamic background
-        backgroundWidget: Stack(
-          children: [
-            // 1. Main Image Area
-            Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // Determine visual rect of the image
-                  // We have fixed padding in the UI: Top 80, Bottom (panel height + padding)
-                  // Adjust padding to account for floating tabs if necessary, but 240 is plenty.
-                  final availableWidth = constraints.maxWidth;
-                  final availableHeight = constraints.maxHeight - 80 - (bottomPanelHeight + bottomPadding);
-                  
-                  Size displaySize = Size(availableWidth, availableHeight);
-                  
-                  if (_imageWidth != null && _imageHeight != null) {
-                    final fitted = applyBoxFit(
-                      BoxFit.contain, 
-                      Size(_imageWidth!, _imageHeight!), 
-                      Size(availableWidth, availableHeight)
-                    );
-                    displaySize = fitted.destination;
-                  }
-
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                       // Centered Image + Crop Grid Area
-                       Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 80, bottom: (bottomPanelHeight + bottomPadding)), 
-                          child: SizedBox(
-                            width: displaySize.width,
-                            height: displaySize.height,
-                            child: Stack(
-                              clipBehavior: Clip.none, 
-                              children: [
+      body: LiquidGlassScope.stack(
+        background: Stack(
+            children: [
+              // 1. Main Image Area
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Determine visual rect of the image
+                    // We have fixed padding in the UI: Top 80, Bottom (panel height + padding)
+                    // Adjust padding to account for floating tabs if necessary, but 240 is plenty.
+                    final availableWidth = constraints.maxWidth;
+                    final availableHeight =
+                        constraints.maxHeight -
+                        80 -
+                        (bottomPanelHeight + bottomPadding);
+  
+                    Size displaySize = Size(availableWidth, availableHeight);
+  
+                    if (_imageWidth != null && _imageHeight != null) {
+                      final fitted = applyBoxFit(
+                        BoxFit.contain,
+                        Size(_imageWidth!, _imageHeight!),
+                        Size(availableWidth, availableHeight),
+                      );
+                      displaySize = fitted.destination;
+                    }
+  
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Centered Image + Crop Grid Area
+                        Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: 80,
+                              bottom: (bottomPanelHeight + bottomPadding),
+                            ),
+                            child: SizedBox(
+                              width: displaySize.width,
+                              height: displaySize.height,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
                                 // Main Image
                                 Positioned.fill(
-                                    child: Center(
-                                      child: ClipRect(
-                                        child: Transform(
-                                          alignment: Alignment.center,
-                                          transform: Matrix4.identity()
-                                            ..translate(_pan.dx, _pan.dy)
-                                            ..scale(_scale * _autoScaleForRotation(_straightenAngle))
-                                            ..rotateZ(_straightenAngle)
-                                            ..rotateZ(_quarterTurns * math.pi / 2)
-                                            ..scale(_isFlipped ? -1.0 : 1.0, 1.0),
-                                          child: ColorFiltered( 
-                                              colorFilter: _buildColorFilter(),
-                                              child: _buildImage(),
-                                          ),
+                                  child: Center(
+                                    child: ClipRect(
+                                      child: Transform(
+                                        alignment: Alignment.center,
+                                        transform:
+                                            Matrix4.identity()
+                                              ..multiply(
+                                                Matrix4.translationValues(
+                                                  _pan.dx,
+                                                  _pan.dy,
+                                                  0.0,
+                                                ),
+                                              )
+                                              ..multiply(
+                                                Matrix4.diagonal3Values(
+                                                  _scale *
+                                                      _autoScaleForRotation(
+                                                        _straightenAngle,
+                                                      ),
+                                                  _scale *
+                                                      _autoScaleForRotation(
+                                                        _straightenAngle,
+                                                      ),
+                                                  1.0,
+                                                ),
+                                              )
+                                              ..rotateZ(_straightenAngle)
+                                              ..rotateZ(
+                                                _quarterTurns * math.pi / 2,
+                                              )
+                                              ..multiply(
+                                                Matrix4.diagonal3Values(
+                                                  _isFlipped ? -1.0 : 1.0,
+                                                  1.0,
+                                                  1.0,
+                                                ),
+                                              ),
+                                        child: ColorFiltered(
+                                          colorFilter: _buildColorFilter(),
+                                          child: _buildImage(),
                                         ),
                                       ),
                                     ),
+                                  ),
                                 ),
 
                                 // Crop Overlay (Grid)
@@ -495,14 +639,18 @@ class _EditScreenState extends State<EditScreen> {
                                   Positioned.fill(
                                     child: _CropOverlay(
                                       rect: _cropRect,
-                                      onRectChanged: (r) => setState(() => _cropRect = r),
+                                      onRectChanged:
+                                          (r) => setState(() => _cropRect = r),
                                     ),
                                   ),
 
                                 // Vignette Overlay (Visual only, below crop grid)
                                 Positioned.fill(
                                   child: _VignetteOverlay(
-                                    intensity: _adjustmentValues[AdjustTool.vignette] ?? 0,
+                                    intensity:
+                                        _adjustmentValues[AdjustTool
+                                            .vignette] ??
+                                        0,
                                   ),
                                 ),
                               ],
@@ -512,7 +660,7 @@ class _EditScreenState extends State<EditScreen> {
                       ),
                     ],
                   );
-                }
+                },
               ),
             ),
 
@@ -539,52 +687,74 @@ class _EditScreenState extends State<EditScreen> {
           ],
         ),
         // 4. Floating Tab Bar (Liquid Glass)
-        children: [
-            LiquidGlass(
-              width: 280,
-              height: 60,
-              blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
-              color: Colors.black.withValues(alpha: 0.1), // Match Library Screen exactly
-              shape: RoundedRectangleShape(cornerRadius: 32), // Match Library Screen (32)
-              chromaticAberration: 0.0,
-              distortion: 0.0,
-              position: LiquidGlassAlignPosition(
+        content: AdaptiveLiquidGlassLayer(
+          quality: GlassQuality.premium,
+          child: Stack(
+            children: [
+              Align(
                 alignment: Alignment.bottomCenter,
-                margin: EdgeInsets.only(bottom: bottomPadding + 16),
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: bottomPadding + 16),
+                  child: GlassContainer(
+                    width: 280,
+                    height: 60,
+                    shape: const LiquidRoundedRectangle(
+                      borderRadius: 32,
+                    ), // Match Library Screen (32)
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _TabItem(
+                          icon: Icons.auto_awesome,
+                          label: 'Filters',
+                          isSelected: _selectedCategory == 0,
+                          onTap: () => setState(() => _selectedCategory = 0),
+                        ),
+                        _TabItem(
+                          icon: Icons.tune,
+                          label: 'Adjust',
+                          isSelected: _selectedCategory == 1,
+                          onTap: () => setState(() => _selectedCategory = 1),
+                        ),
+                        _TabItem(
+                          icon: Icons.crop_rotate,
+                          label: 'Crop',
+                          isSelected: _selectedCategory == 2,
+                          onTap: () => setState(() => _selectedCategory = 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _TabItem(icon: Icons.auto_awesome, label: 'Filters', isSelected: _selectedCategory == 0, onTap: () => setState(() => _selectedCategory = 0)),
-                  _TabItem(icon: Icons.tune, label: 'Adjust', isSelected: _selectedCategory == 1, onTap: () => setState(() => _selectedCategory = 1)),
-                  _TabItem(icon: Icons.crop_rotate, label: 'Crop', isSelected: _selectedCategory == 2, onTap: () => setState(() => _selectedCategory = 2)),
-                ],
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildNativeGlassPanel(double bottomPadding) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-        child: Container(
-          color: Colors.black.withValues(alpha: 0.3),
-          padding: EdgeInsets.only(bottom: bottomPadding + 100), // Increased to prevent overlap with floating tabs
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              // Tool Area
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _buildActiveToolArea(),
-                ),
+    return GlassPanel(
+      settings: AppGlassSettings.bottomBar,
+      useOwnLayer: true,
+      quality: GlassQuality.premium,
+      shape: const LiquidRoundedRectangle(borderRadius: 0),
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: bottomPadding + 80,
+        ), // Clear floating tabs
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            // Tool Area
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildActiveToolArea(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -605,35 +775,49 @@ class _EditScreenState extends State<EditScreen> {
           selectedTool: _selectedAdjustTool,
           onToolSelected: (tool) => setState(() => _selectedAdjustTool = tool),
           value: _adjustmentValues[_selectedAdjustTool] ?? 0.0,
-          onValueChanged: (v) => setState(() => _adjustmentValues[_selectedAdjustTool] = v),
+          onValueChanged:
+              (v) => setState(() => _adjustmentValues[_selectedAdjustTool] = v),
         );
       case 2:
         return _CropPanel(
           straightenAngle: _straightenAngle,
           onStraightenChanged: (v) => setState(() => _straightenAngle = v),
-          onRotate: () => setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
+          onRotate:
+              () => setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
           onFlip: () => setState(() => _isFlipped = !_isFlipped),
           onRatio: () {
-             // Rotate ratios: Original -> Free -> Square -> 16:9
-             setState(() {
-               if (_aspectRatio == -1) {
-                 _aspectRatio = 0;
-               } else if (_aspectRatio == 0) {
-                 _aspectRatio = 1;
-               } else if (_aspectRatio == 1) {
-                 _aspectRatio = 16/9;
-               } else {
-                 _aspectRatio = -1;
-               }
-               
-               _cropRect = _applyAspectRatio(_cropRect, _aspectRatio);
-             });
+            // Rotate ratios: Original -> Free -> Square -> 16:9
+            setState(() {
+              if (_aspectRatio == -1) {
+                _aspectRatio = 0;
+              } else if (_aspectRatio == 0) {
+                _aspectRatio = 1;
+              } else if (_aspectRatio == 1) {
+                _aspectRatio = 16 / 9;
+              } else {
+                _aspectRatio = -1;
+              }
+
+              _cropRect = _applyAspectRatio(_cropRect, _aspectRatio);
+            });
           },
           onReset: _resetCrop,
-          aspectRatioLabel: _aspectRatio == -1 ? 'ORIGINAL' : _aspectRatio == 0 ? 'FREE' : _aspectRatio == 1 ? 'SQUARE' : '16:9',
+          aspectRatioLabel:
+              _aspectRatio == -1
+                  ? 'ORIGINAL'
+                  : _aspectRatio == 0
+                  ? 'FREE'
+                  : _aspectRatio == 1
+                  ? 'SQUARE'
+                  : '16:9',
         );
       default:
-        return Center(child: Text('Tool Category $_selectedCategory', style: const TextStyle(color: Colors.white70)));
+        return Center(
+          child: Text(
+            'Tool Category $_selectedCategory',
+            style: const TextStyle(color: Colors.white70),
+          ),
+        );
     }
   }
 }
@@ -642,9 +826,9 @@ class _EditTopBar extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onSave;
   final bool isSaving;
-  
+
   const _EditTopBar({
-    required this.onCancel, 
+    required this.onCancel,
     required this.onSave,
     this.isSaving = false,
   });
@@ -669,19 +853,62 @@ class _EditTopBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
-                onTap: isSaving ? null : onCancel,
-                child: Text('Cancel', style: TextStyle(color: isSaving ? Colors.white38 : Colors.white, fontSize: 16)),
+              GlassButton.custom(
+                onTap: onCancel,
+                enabled: !isSaving,
+                width: 80,
+                height: 36,
+                useOwnLayer: true,
+                settings: AppGlassSettings.premiumButton,
+                quality: GlassQuality.premium,
+                shape: const LiquidRoundedRectangle(borderRadius: 18),
+                child: Center(
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: isSaving ? Colors.white38 : Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ),
               const Text(
                 'Edit', // Could be 'Crop' or such depending on mode, but 'Edit' is fine
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 17),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 17,
+                ),
               ),
-              GestureDetector(
-                onTap: isSaving ? null : onSave,
-                child: isSaving 
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
-                  : const Text('Save', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16)),
+              GlassButton.custom(
+                onTap: onSave,
+                enabled: !isSaving,
+                width: 80,
+                height: 36,
+                useOwnLayer: true,
+                settings: AppGlassSettings.premiumButton,
+                quality: GlassQuality.premium,
+                shape: const LiquidRoundedRectangle(borderRadius: 18),
+                child: Center(
+                  child:
+                      isSaving
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.amber,
+                            ),
+                          )
+                          : const Text(
+                            'Save',
+                            style: TextStyle(
+                              color: Colors.amber,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                ),
               ),
             ],
           ),
@@ -691,23 +918,25 @@ class _EditTopBar extends StatelessWidget {
   }
 }
 
-
-
-
-
 class _TabItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _TabItem({required this.icon, required this.label, required this.isSelected, required this.onTap});
+  const _TabItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     // White style as requested
-    final color = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6);
-    
+    final color =
+        isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6);
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -719,18 +948,21 @@ class _TabItem extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+              color:
+                  isSelected
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : Colors.transparent,
             ),
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 2),
           Text(
-            label, 
+            label,
             style: TextStyle(
               color: color,
-              fontSize: 11, 
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal
-            )
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
         ],
       ),
@@ -767,7 +999,12 @@ class _StyleCarousel extends StatelessWidget {
           ),
           child: Text(
             (selectedFilter ?? 'STANDARD').toUpperCase(),
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -775,12 +1012,14 @@ class _StyleCarousel extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: filters.length,
-            padding: const EdgeInsets.symmetric(horizontal: 110), // Keeps selected in center-ish
+            padding: const EdgeInsets.symmetric(
+              horizontal: 110,
+            ), // Keeps selected in center-ish
             itemBuilder: (context, index) {
               final filterName = filters[index]['name'];
               final matrix = filters[index]['matrix'] as List<double>;
               final isSelected = selectedFilter == filterName;
-              
+
               return GestureDetector(
                 onTap: () => onFilterSelected(filterName),
                 child: Padding(
@@ -788,8 +1027,15 @@ class _StyleCarousel extends StatelessWidget {
                   child: Column(
                     children: [
                       // Active indicator dot
-                      if (isSelected) 
-                        Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                      if (isSelected)
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       // Thumbnail
                       _StyleThumbnail(
@@ -830,51 +1076,83 @@ class _StyleThumbnail extends StatelessWidget {
     // Ideally we should share the exact logic, but for thumbnails simple application is fine.
     // The matrixValues from _styleFilters are [brightness, contrast, saturation, warmth]
     // We need to convert this to a 5x5 matrix using the helper similarly.
-    
+
     // Copying helper logic for self-contained component or we could make it static.
     // For simplicity, let's just make a simple approximation or pass the builder.
     // Actually, let's use the provided matrix values to build a real matrix.
-    
+
     final b = matrixValues[0];
     final c = matrixValues[1];
     final s = matrixValues[2];
     final w = matrixValues[3];
 
     final base = [
-      c, 0.0, 0.0, 0.0, b * 100 + w * 20,
-      0.0, c, 0.0, 0.0, b * 100,
-      0.0, 0.0, c, 0.0, b * 100 - w * 20,
-      0.0, 0.0, 0.0, 1.0, 0.0,
+      c,
+      0.0,
+      0.0,
+      0.0,
+      b * 100 + w * 20,
+      0.0,
+      c,
+      0.0,
+      0.0,
+      b * 100,
+      0.0,
+      0.0,
+      c,
+      0.0,
+      b * 100 - w * 20,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ];
-    
+
     // Saturation matrix logic specific to this file's context
     const lumR = 0.2126;
     const lumG = 0.7152;
     const lumB = 0.0722;
     final satMatrix = [
-      lumR * (1 - s) + s, lumG * (1 - s),     lumB * (1 - s),     0.0, 0.0,
-      lumR * (1 - s),     lumG * (1 - s) + s, lumB * (1 - s),     0.0, 0.0,
-      lumR * (1 - s),     lumG * (1 - s),     lumB * (1 - s) + s, 0.0, 0.0,
-      0.0,                0.0,                0.0,                1.0, 0.0,
+      lumR * (1 - s) + s,
+      lumG * (1 - s),
+      lumB * (1 - s),
+      0.0,
+      0.0,
+      lumR * (1 - s),
+      lumG * (1 - s) + s,
+      lumB * (1 - s),
+      0.0,
+      0.0,
+      lumR * (1 - s),
+      lumG * (1 - s),
+      lumB * (1 - s) + s,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ];
-    
+
     // Multiply
     final m1 = base;
     final m2 = satMatrix;
     final result = List<double>.filled(20, 0.0);
     for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            double sum = 0;
-            for (int k = 0; k < 4; k++) {
-              sum += m1[i * 5 + k] * m2[k * 5 + j];
-            }
-            result[i * 5 + j] = sum;
-        }
-        double tSum = 0;
+      for (int j = 0; j < 4; j++) {
+        double sum = 0;
         for (int k = 0; k < 4; k++) {
-          tSum += m1[i * 5 + k] * m2[k * 5 + 4];
+          sum += m1[i * 5 + k] * m2[k * 5 + j];
         }
-        result[i * 5 + 4] = tSum + m1[i * 5 + 4];
+        result[i * 5 + j] = sum;
+      }
+      double tSum = 0;
+      for (int k = 0; k < 4; k++) {
+        tSum += m1[i * 5 + k] * m2[k * 5 + 4];
+      }
+      result[i * 5 + 4] = tSum + m1[i * 5 + 4];
     }
 
     Widget imageContent;
@@ -885,7 +1163,7 @@ class _StyleThumbnail extends StatelessWidget {
       );
     } else if (imageFile != null) {
       imageContent = Image.file(
-        imageFile!, 
+        imageFile!,
         fit: BoxFit.cover,
         cacheWidth: 150, // Optimize memory
       );
@@ -894,7 +1172,8 @@ class _StyleThumbnail extends StatelessWidget {
     }
 
     return Container(
-      width: 60, height: 60,
+      width: 60,
+      height: 60,
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(4), // Slightly sharper for photos
@@ -908,7 +1187,6 @@ class _StyleThumbnail extends StatelessWidget {
     );
   }
 }
-
 
 class _AdjustPanel extends StatelessWidget {
   final AdjustTool selectedTool;
@@ -926,17 +1204,15 @@ class _AdjustPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         // Dial Slider
         Padding(
           padding: const EdgeInsets.only(bottom: 20),
-          child: _DialSlider(
-            value: value,
-            onChanged: onValueChanged,
-          ),
+          child: _DialSlider(value: value, onChanged: onValueChanged),
         ),
-        
+
         // Tool Selector
         SizedBox(
           height: 70,
@@ -949,8 +1225,8 @@ class _AdjustPanel extends StatelessWidget {
               final isSelected = tool == selectedTool;
               return GestureDetector(
                 onTap: () {
-                   HapticFeedback.selectionClick();
-                   onToolSelected(tool);
+                  HapticFeedback.selectionClick();
+                  onToolSelected(tool);
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -963,7 +1239,10 @@ class _AdjustPanel extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelected ? Colors.white.withValues(alpha: 0.9) : Colors.grey.withValues(alpha: 0.3),
+                          color:
+                              isSelected
+                                  ? Colors.white.withValues(alpha: 0.9)
+                                  : Colors.grey.withValues(alpha: 0.3),
                         ),
                         child: Icon(
                           tool.icon,
@@ -977,7 +1256,8 @@ class _AdjustPanel extends StatelessWidget {
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.white54,
                           fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -1010,12 +1290,12 @@ class _DialSliderState extends State<_DialSlider> {
     super.initState();
     _dragValue = widget.value;
   }
-  
+
   @override
   void didUpdateWidget(_DialSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
-       _dragValue = widget.value;
+      _dragValue = widget.value;
     }
   }
 
@@ -1023,20 +1303,20 @@ class _DialSliderState extends State<_DialSlider> {
     // Sensitivity: how many pixels per 0.1 value change
     const sensitivity = 20.0;
     final delta = details.primaryDelta ?? 0;
-    
+
     // Drag Right -> Increase Value
     double newValue = _dragValue + (delta / sensitivity) * 0.1;
     newValue = newValue.clamp(-1.0, 1.0);
-    
+
     // Haptics
     if ((newValue * 10).truncate() != (_dragValue * 10).truncate()) {
-       HapticFeedback.selectionClick();
+      HapticFeedback.selectionClick();
     }
-    
+
     setState(() {
       _dragValue = newValue;
     });
-    
+
     widget.onChanged(newValue);
   }
 
@@ -1048,7 +1328,7 @@ class _DialSliderState extends State<_DialSlider> {
         height: 50,
         color: Colors.transparent, // Hit test target
         child: CustomPaint(
-          size: const Size(double.infinity, 50),
+          size: const Size(0, 50), // Let it expand to fill width naturally
           painter: _DialPainter(value: _dragValue),
         ),
       ),
@@ -1062,60 +1342,63 @@ class _DialPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.5)
-      ..strokeWidth = 1.0
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = Colors.grey.withValues(alpha: 0.5)
+          ..strokeWidth = 1.0
+          ..strokeCap = StrokeCap.round;
 
     final center = size.width / 2;
     // Spacing between ticks (pixels)
-    const spacing = 10.0; 
-    
+    const spacing = 10.0;
+
     // Draw center indicator
     canvas.drawLine(
       Offset(center, 0),
       Offset(center, size.height), // Full height line
-      Paint()..color = Colors.amber..strokeWidth = 2,
+      Paint()
+        ..color = Colors.amber
+        ..strokeWidth = 2,
     );
-    
+
     // Draw ticks
-    // Range -1.0 to 1.0. 
+    // Range -1.0 to 1.0.
     // If value is 0, center is 0.
     // If value is 0.1, we shifted by 0.1 units.
     // Pixels per 0.1 unit = spacing.
     // So 1 unit = 10 * spacing.
-    
+
     final pixelOffset = value * 10 * spacing;
-    
+
     // Draw generic ruler lines relative to center
     // We want to draw lines for values -1.0 ... 1.0 corresponding to x positions
-    
+
     for (int i = -20; i <= 20; i++) {
-        // i represents 0.1 increments
-        // x position relative to center without offset
-        final tickX = center + (i * spacing) - pixelOffset;
-        
-        // Don't draw if out of bounds (plus some margin)
-        if (tickX < -10 || tickX > size.width + 10) continue;
-        
-        // Determine height
-        double height = 10.0;
-        if (i % 5 == 0) height = 20.0; // Major tick (0.5, 1.0)
-        if (i % 10 == 0) height = 30.0; // Major tick (1.0)
-        
-        // Determine opacity based on distance from center (fade out edges)
-        final dist = (tickX - center).abs();
-        final maxDist = size.width / 2;
-        double opacity = 1.0 - (dist / maxDist);
-        opacity = opacity.clamp(0.0, 1.0);
-        
-        paint.color = Colors.grey.withValues(alpha: 0.5 * opacity);
-        
-        canvas.drawLine(
-            Offset(tickX, (size.height - height) / 2),
-            Offset(tickX, (size.height + height) / 2),
-            paint,
-        );
+      // i represents 0.1 increments
+      // x position relative to center without offset
+      final tickX = center + (i * spacing) - pixelOffset;
+
+      // Don't draw if out of bounds (plus some margin)
+      if (tickX < -10 || tickX > size.width + 10) continue;
+
+      // Determine height
+      double height = 10.0;
+      if (i % 5 == 0) height = 20.0; // Major tick (0.5, 1.0)
+      if (i % 10 == 0) height = 30.0; // Major tick (1.0)
+
+      // Determine opacity based on distance from center (fade out edges)
+      final dist = (tickX - center).abs();
+      final maxDist = size.width / 2;
+      double opacity = 1.0 - (dist / maxDist);
+      opacity = opacity.clamp(0.0, 1.0);
+
+      paint.color = Colors.grey.withValues(alpha: 0.5 * opacity);
+
+      canvas.drawLine(
+        Offset(tickX, (size.height - height) / 2),
+        Offset(tickX, (size.height + height) / 2),
+        paint,
+      );
     }
   }
 
@@ -1124,14 +1407,15 @@ class _DialPainter extends CustomPainter {
 }
 
 class _VignetteOverlay extends StatelessWidget {
-  final double intensity; // -1.0 to 1.0 (only positive makes sense for vignette usually)
+  final double
+  intensity; // -1.0 to 1.0 (only positive makes sense for vignette usually)
 
   const _VignetteOverlay({required this.intensity});
 
   @override
   Widget build(BuildContext context) {
     if (intensity <= 0) return const SizedBox.shrink();
-    
+
     return IgnorePointer(
       child: Container(
         decoration: BoxDecoration(
@@ -1171,6 +1455,7 @@ class _CropPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Straighten Dial
         Padding(
@@ -1187,7 +1472,14 @@ class _CropPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text('${(straightenAngle * 180 / math.pi).round()}°', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(
+                '${(straightenAngle * 180 / math.pi).round()}°',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -1196,10 +1488,30 @@ class _CropPanel extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _GlassIconButton(icon: Icons.rotate_90_degrees_cw, label: 'Rotate', onTap: onRotate),
-            _GlassIconButton(icon: Icons.flip, label: 'Flip', onTap: onFlip),
-            _GlassIconButton(icon: Icons.aspect_ratio, label: aspectRatioLabel, onTap: onRatio),
-            _GlassIconButton(icon: Icons.restart_alt, label: 'Reset', onTap: onReset),
+            Expanded(
+              child: _GlassIconButton(
+                icon: Icons.rotate_90_degrees_cw,
+                label: 'Rotate',
+                onTap: onRotate,
+              ),
+            ),
+            Expanded(
+              child: _GlassIconButton(icon: Icons.flip, label: 'Flip', onTap: onFlip),
+            ),
+            Expanded(
+              child: _GlassIconButton(
+                icon: Icons.aspect_ratio,
+                label: aspectRatioLabel,
+                onTap: onRatio,
+              ),
+            ),
+            Expanded(
+              child: _GlassIconButton(
+                icon: Icons.restart_alt,
+                label: 'Reset',
+                onTap: onReset,
+              ),
+            ),
           ],
         ),
       ],
@@ -1211,27 +1523,46 @@ class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  
-  const _GlassIconButton({required this.icon, required this.label, required this.onTap});
+
+  const _GlassIconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return GlassButton.custom(
       onTap: () {
         HapticFeedback.selectionClick();
         onTap();
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-        ),
+      width: double.infinity, // Let it be constrained by the parent Row/Flex
+      height: 36,
+      quality: GlassQuality.premium,
+      useOwnLayer: true,
+      settings: AppGlassSettings.premiumButton.copyWith(
+        glassColor: Colors.transparent, // Inherit from parent surface
+      ),
+      shape: const LiquidRoundedRectangle(borderRadius: 18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+            Icon(icon, color: Colors.white, size: 16),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1242,7 +1573,7 @@ class _GlassIconButton extends StatelessWidget {
 class _CropOverlay extends StatefulWidget {
   final Rect rect; // normalized
   final ValueChanged<Rect> onRectChanged;
-  
+
   const _CropOverlay({required this.rect, required this.onRectChanged});
 
   @override
@@ -1257,13 +1588,15 @@ class _CropOverlayState extends State<_CropOverlay> {
     _isDragging = true;
     final r = widget.rect;
     final pos = details.localPosition;
-    
+
     // Map normalized rect to screen coords
     final screenRect = Rect.fromLTWH(
-      r.left * size.width, r.top * size.height,
-      r.width * size.width, r.height * size.height
+      r.left * size.width,
+      r.top * size.height,
+      r.width * size.width,
+      r.height * size.height,
     );
-    
+
     // Hit test corners (radius 30)
     const rad = 30.0;
     if ((pos - screenRect.topLeft).distance < rad) {
@@ -1283,12 +1616,12 @@ class _CropOverlayState extends State<_CropOverlay> {
 
   void _onDragUpdate(DragUpdateDetails details, Size size) {
     if (_dragHandle == -1) return;
-    
+
     final dx = details.delta.dx / size.width;
     final dy = details.delta.dy / size.height;
-    
+
     Rect newRect = widget.rect;
-    
+
     if (_dragHandle == 0) {
       // Pan
       newRect = newRect.translate(dx, dy);
@@ -1298,22 +1631,34 @@ class _CropOverlayState extends State<_CropOverlay> {
       double t = newRect.top;
       double r = newRect.right;
       double b = newRect.bottom;
-      
-      if (_dragHandle == 1) { l += dx; t += dy; } // TL
-      if (_dragHandle == 2) { r += dx; t += dy; } // TR
-      if (_dragHandle == 3) { l += dx; b += dy; } // BL
-      if (_dragHandle == 4) { r += dx; b += dy; } // BR
-      
+
+      if (_dragHandle == 1) {
+        l += dx;
+        t += dy;
+      } // TL
+      if (_dragHandle == 2) {
+        r += dx;
+        t += dy;
+      } // TR
+      if (_dragHandle == 3) {
+        l += dx;
+        b += dy;
+      } // BL
+      if (_dragHandle == 4) {
+        r += dx;
+        b += dy;
+      } // BR
+
       // Enforce min size
       if (r < l + 0.1) r = l + 0.1;
       if (b < t + 0.1) b = t + 0.1;
-      
+
       newRect = Rect.fromLTRB(l, t, r, b);
     }
 
     // Clamp to 0..1
     newRect = newRect.intersect(const Rect.fromLTWH(0, 0, 1, 1));
-    
+
     widget.onRectChanged(newRect);
   }
 
@@ -1334,14 +1679,11 @@ class _CropOverlayState extends State<_CropOverlay> {
           child: Container(
             color: Colors.transparent, // Hit test entire area
             child: CustomPaint(
-              painter: _GridPainter(
-                rect: widget.rect,
-                isDragging: _isDragging,
-              ),
+              painter: _GridPainter(rect: widget.rect, isDragging: _isDragging),
             ),
           ),
         );
-      }
+      },
     );
   }
 }
@@ -1349,7 +1691,7 @@ class _CropOverlayState extends State<_CropOverlay> {
 class _GridPainter extends CustomPainter {
   final Rect rect; // normalized
   final bool isDragging;
-  
+
   _GridPainter({required this.rect, required this.isDragging});
 
   @override
@@ -1357,61 +1699,87 @@ class _GridPainter extends CustomPainter {
     // 1. Draw Dimmed Outer Area
     // Intersect the screen rect with crop rect to find the hole.
     // Or just draw 4 rectangles around.
-    
+
     final screenRect = Offset.zero & size;
     final cropRectScreen = Rect.fromLTWH(
-      rect.left * size.width, rect.top * size.height,
-      rect.width * size.width, rect.height * size.height
+      rect.left * size.width,
+      rect.top * size.height,
+      rect.width * size.width,
+      rect.height * size.height,
     );
-    
+
     final paintObj = Paint()..color = Colors.black.withValues(alpha: 0.5);
-    
+
     // Path operation: Screen - Crop
-    final outerPath = Path()
-      ..fillType = PathFillType.evenOdd // Fix: fillType belongs to Path
-      ..addRect(screenRect)
-      ..addRect(cropRectScreen);
+    final outerPath =
+        Path()
+          ..fillType =
+              PathFillType
+                  .evenOdd // Fix: fillType belongs to Path
+          ..addRect(screenRect)
+          ..addRect(cropRectScreen);
 
     canvas.drawPath(outerPath, paintObj);
 
     // 2. Draw Grid
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: isDragging ? 0.6 : 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
+    final gridPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: isDragging ? 0.6 : 0.3)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1;
 
     // Draw Box
     canvas.drawRect(cropRectScreen, gridPaint);
-    
+
     // Thirds
     final w = cropRectScreen.width;
     final h = cropRectScreen.height;
     final l = cropRectScreen.left;
     final t = cropRectScreen.top;
-    
+
     canvas.drawLine(Offset(l + w / 3, t), Offset(l + w / 3, t + h), gridPaint);
-    canvas.drawLine(Offset(l + 2 * w / 3, t), Offset(l + 2 * w / 3, t + h), gridPaint);
+    canvas.drawLine(
+      Offset(l + 2 * w / 3, t),
+      Offset(l + 2 * w / 3, t + h),
+      gridPaint,
+    );
     canvas.drawLine(Offset(l, t + h / 3), Offset(l + w, t + h / 3), gridPaint);
-    canvas.drawLine(Offset(l, t + 2 * h / 3), Offset(l + w, t + 2 * h / 3), gridPaint);
-    
+    canvas.drawLine(
+      Offset(l, t + 2 * h / 3),
+      Offset(l + w, t + 2 * h / 3),
+      gridPaint,
+    );
+
     // 3. Draw Corners (Thick)
-    final cornerPaint = Paint()..color = Colors.white..strokeWidth = 3..style = PaintingStyle.stroke;
+    final cornerPaint =
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 3
+          ..style = PaintingStyle.stroke;
     final path = Path();
     const len = 20.0;
-    
+
     // TL
-    path.moveTo(l, t + len); path.lineTo(l, t); path.lineTo(l + len, t);
+    path.moveTo(l, t + len);
+    path.lineTo(l, t);
+    path.lineTo(l + len, t);
     // TR
-    path.moveTo(l + w - len, t); path.lineTo(l + w, t); path.lineTo(l + w, t + len);
+    path.moveTo(l + w - len, t);
+    path.lineTo(l + w, t);
+    path.lineTo(l + w, t + len);
     // BR
-    path.moveTo(l + w, t + h - len); path.lineTo(l + w, t + h); path.lineTo(l + w - len, t + h);
+    path.moveTo(l + w, t + h - len);
+    path.lineTo(l + w, t + h);
+    path.lineTo(l + w - len, t + h);
     // BL
-    path.moveTo(l + len, t + h); path.lineTo(l, t + h); path.lineTo(l, t + h - len);
-    
+    path.moveTo(l + len, t + h);
+    path.lineTo(l, t + h);
+    path.lineTo(l, t + h - len);
+
     canvas.drawPath(path, cornerPaint);
   }
+
   @override
-  bool shouldRepaint(_GridPainter oldDelegate) => oldDelegate.rect != rect || oldDelegate.isDragging != isDragging;
+  bool shouldRepaint(_GridPainter oldDelegate) =>
+      oldDelegate.rect != rect || oldDelegate.isDragging != isDragging;
 }
-
-

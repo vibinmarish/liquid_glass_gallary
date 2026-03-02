@@ -4,13 +4,13 @@ import 'package:extended_image/extended_image.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../providers/media_index_provider.dart';
 import '../models/media_item.dart';
 import '../theme/glass_theme.dart';
-import '../widgets/liquid_button.dart';
+import '../theme/glass_settings.dart';
 import 'edit_screen.dart';
 import '../widgets/gallery_thumbnail.dart';
 
@@ -39,21 +39,22 @@ class GalleryViewer extends StatefulWidget {
   State<GalleryViewer> createState() => _GalleryViewerState();
 }
 
-class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProviderStateMixin {
+class _GalleryViewerState extends State<GalleryViewer>
+    with SingleTickerProviderStateMixin {
   late ExtendedPageController _pageController;
   final ScrollController _filmstripController = ScrollController();
-  
+
   // Data Source
   List<MediaItem> _allMedia = [];
   late int _currentIndex;
-  
+
   // UI State
   bool _showControls = true;
-  
+
   // Animations
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
+
   // Video Controller Pool
   final Map<String, VideoPlayerController> _controllerPool = {};
 
@@ -62,17 +63,20 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = ExtendedPageController(initialPage: widget.initialIndex);
-    
+
     // UI Fade Animation
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
       value: 1.0, // Start visible
     );
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
-    
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+
     // _startAutoHideTimer(); // ⚡️ FIX: Disable auto-hide
-    
+
     // Initial filmstrip scroll
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToFilmstripIndex(_currentIndex, animate: false);
@@ -88,7 +92,7 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
     } else {
       _allMedia = context.watch<MediaIndexProvider>().mediaItems;
     }
-    
+
     // Safety check if current index is out of bounds (e.g. after deletion)
     if (_currentIndex >= _allMedia.length) {
       if (_allMedia.isEmpty) {
@@ -104,13 +108,13 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
     _pageController.dispose();
     _filmstripController.dispose();
     _fadeController.dispose();
-    
+
     // Dispose video controllers
     for (final controller in _controllerPool.values) {
       controller.dispose();
     }
     _controllerPool.clear();
-    
+
     super.dispose();
   }
 
@@ -130,12 +134,13 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
 
   void _scrollToFilmstripIndex(int index, {bool animate = true}) {
     if (!_filmstripController.hasClients) return;
-    
+
     final screenWidth = MediaQuery.of(context).size.width;
     const itemWidth = 32.0; // 28 width + 2*2 margin
-    final targetOffset = (index * itemWidth) - (screenWidth / 2) + (itemWidth / 2) + 20;
+    final targetOffset =
+        (index * itemWidth) - (screenWidth / 2) + (itemWidth / 2) + 20;
     final maxScroll = _filmstripController.position.maxScrollExtent;
-    
+
     if (animate) {
       _filmstripController.animateTo(
         targetOffset.clamp(0.0, maxScroll),
@@ -147,15 +152,15 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
     }
   }
 
-  MediaItem get _currentItem => 
-      (_allMedia.isNotEmpty && _currentIndex < _allMedia.length) 
-          ? _allMedia[_currentIndex] 
+  MediaItem get _currentItem =>
+      (_allMedia.isNotEmpty && _currentIndex < _allMedia.length)
+          ? _allMedia[_currentIndex]
           : MediaItem(id: 'error', isVideo: false, createDate: DateTime.now());
 
   Future<void> _preInitializeVideo(MediaItem item) async {
     if (_controllerPool.containsKey(item.id)) return;
     if (item.asset == null) return;
-    
+
     try {
       final file = await item.asset!.file;
       if (file != null) {
@@ -164,8 +169,10 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
         _controllerPool[item.id] = controller;
         // Cleanup old
         if (_controllerPool.length > 3) {
-           final keyToRemove = _controllerPool.keys.firstWhere((k) => k != _currentItem.id);
-           _controllerPool.remove(keyToRemove)?.dispose();
+          final keyToRemove = _controllerPool.keys.firstWhere(
+            (k) => k != _currentItem.id,
+          );
+          _controllerPool.remove(keyToRemove)?.dispose();
         }
       }
     } catch (e) {
@@ -186,21 +193,28 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
   Future<void> _handleShare() async {
     final item = _currentItem;
     if (item.asset == null) return;
-    
+
     final file = await item.asset!.file;
     if (file != null) {
-      await Share.shareXFiles([XFile(file.path)], text: 'Check out this photo!');
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'Check out this photo!');
     }
   }
 
   Future<void> _handleDelete() async {
     final itemToDelete = _currentItem;
     HapticFeedback.mediumImpact();
-    
+
     // 1. Move UI to next item optimistically
     if (_allMedia.length > 1) {
-       final nextIndex = _currentIndex >= _allMedia.length - 1 ? _currentIndex - 1 : _currentIndex + 1;
-       _pageController.jumpToPage(nextIndex); // Jump to avoid animation glitch on delete
+      final nextIndex =
+          _currentIndex >= _allMedia.length - 1
+              ? _currentIndex - 1
+              : _currentIndex + 1;
+      _pageController.jumpToPage(
+        nextIndex,
+      ); // Jump to avoid animation glitch on delete
     } else {
       if (widget.onClose != null) {
         widget.onClose!();
@@ -210,7 +224,9 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
     }
 
     // 2. Perform Delete
-    await context.read<MediaIndexProvider>().deleteMediaItems({itemToDelete.id});
+    await context.read<MediaIndexProvider>().deleteMediaItems({
+      itemToDelete.id,
+    });
   }
 
   void _toggleFavorite() {
@@ -223,10 +239,12 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
       context,
       MaterialPageRoute(builder: (_) => EditScreen(mediaItem: _currentItem)),
     );
-    
+
     if (result == true && mounted) {
       // Refresh provider if edits were made
-      context.read<MediaIndexProvider>().refresh(); // Ensure this method exists or trigger reload
+      context
+          .read<MediaIndexProvider>()
+          .refresh(); // Ensure this method exists or trigger reload
       // Or just reload current item if possible
       setState(() {});
     }
@@ -245,9 +263,9 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: LiquidGlassView(
+      body: LiquidGlassScope.stack(
         // ⚡️ FIX: Wrap the image/video in backgroundWidget so blur works
-        backgroundWidget: Stack(
+        background: Stack(
           fit: StackFit.expand,
           children: [
             // 1. Main Gesture PageView
@@ -260,9 +278,10 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
                   setState(() => _currentIndex = index);
                   widget.onPageChanged?.call(index);
                   _scrollToFilmstripIndex(index);
-                  
+
                   // Pre-load next video
-                  if (index + 1 < _allMedia.length && _allMedia[index + 1].isVideo) {
+                  if (index + 1 < _allMedia.length &&
+                      _allMedia[index + 1].isVideo) {
                     _preInitializeVideo(_allMedia[index + 1]);
                   }
                 },
@@ -276,25 +295,31 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
                     );
                   } else if (item.asset != null) {
                     return ExtendedImage(
-                      image: AssetEntityImageProvider(item.asset!, isOriginal: true),
+                      image: AssetEntityImageProvider(
+                        item.asset!,
+                        isOriginal: true,
+                      ),
                       fit: BoxFit.contain,
                       mode: ExtendedImageMode.gesture,
-                      initGestureConfigHandler: (_) => GestureConfig(
-                        inPageView: true, 
-                        minScale: 0.9, 
-                        maxScale: 4.0,
-                      ),
+                      initGestureConfigHandler:
+                          (_) => GestureConfig(
+                            inPageView: true,
+                            minScale: 0.9,
+                            maxScale: 4.0,
+                          ),
                     );
                   }
-                  return const Center(child: Icon(Icons.broken_image, color: Colors.grey));
+                  return const Center(
+                    child: Icon(Icons.broken_image, color: Colors.grey),
+                  );
                 },
               ),
             ),
-            
+
             // 2. Filmstrip (Part of background, under glass controls)
             Positioned(
               bottom: 110,
-              left: 0, 
+              left: 0,
               right: 0,
               height: 48,
               child: IgnorePointer(
@@ -304,7 +329,9 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
                   child: ListView.builder(
                     controller: _filmstripController,
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 50), // Center padding
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                    ), // Center padding
                     itemCount: _allMedia.length,
                     itemBuilder: (context, index) {
                       final isSelected = index == _currentIndex;
@@ -316,14 +343,20 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
                           width: isSelected ? 36 : 28,
                           margin: const EdgeInsets.symmetric(horizontal: 2),
                           decoration: BoxDecoration(
-                             border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-                             borderRadius: BorderRadius.circular(4),
+                            border:
+                                isSelected
+                                    ? Border.all(color: Colors.white, width: 2)
+                                    : null,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: (item.asset != null) 
-                              ? GalleryThumbnail(asset: item.asset!) // ⚡️ OPTIMIZATION: Reuses grid cache (200px) for instant load
-                              : const ColoredBox(color: Colors.grey),
+                            child:
+                                (item.asset != null)
+                                    ? GalleryThumbnail(
+                                      asset: item.asset!,
+                                    ) // ⚡️ OPTIMIZATION: Reuses grid cache (200px) for instant load
+                                    : const ColoredBox(color: Colors.grey),
                           ),
                         ),
                       );
@@ -334,116 +367,160 @@ class _GalleryViewerState extends State<GalleryViewer> with SingleTickerProvider
             ),
           ],
         ),
-        
-        // 3. Liquid Glass Controls (Overlay)
-        // Only visible when _showControls is true (handled by opacity/pointer events below? 
-        // No, LiquidGlassView children are always visible unless we remove them.
-        children: _showControls ? [
-          // --- TOP BAR (Back + Metadata) ---
-          
-          // Back Button
-          LiquidButton(
-            width: 44, height: 44,
-            position: LiquidGlassAlignPosition(
-              alignment: Alignment.topLeft,
-              margin: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, left: 16),
-            ),
-            shape: RoundedRectangleShape(cornerRadius: 22),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              onPressed: _handleBack,
-            ),
-          ),
-          
-          // Metadata (Top Center)
-          LiquidGlass(
-            width: 200, height: 50,
-            position: LiquidGlassAlignPosition(
-              alignment: Alignment.topCenter,
-              margin: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8),
-            ),
-            blur: const LiquidGlassBlur(sigmaX: 8, sigmaY: 8),
-            color: Colors.transparent, // Mostly transparent text container
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   Text(
-                     _currentItem.asset?.title ?? 'Photo',
-                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                   ),
-                   Text(
-                     _formatDate(_currentItem.createDate),
-                     style: const TextStyle(color: Colors.white70, fontSize: 10),
-                   ),
-                ],
-              ),
-            ),
-          ),
 
-          // --- BOTTOM CONTROLS ---
-          
-          // Share (Bottom Left)
-          LiquidButton(
-            width: 48, height: 48,
-            position: LiquidGlassAlignPosition(
-              alignment: Alignment.bottomLeft,
-              margin: const EdgeInsets.only(bottom: 40, left: 24),
-            ),
-            shape: RoundedRectangleShape(cornerRadius: 24),
-            child: IconButton(
-              icon: const Icon(Icons.ios_share, color: GlassColors.accentBlue),
-              onPressed: _handleShare,
-            ),
+        // 3. Liquid Glass Controls (Overlay)
+        // Only visible when _showControls is true (handled by opacity/pointer events below?
+        // No, LiquidGlassView children are always visible unless we remove them.
+        content: AdaptiveLiquidGlassLayer(
+          quality: GlassQuality.premium,
+          settings: AppGlassSettings.viewerHud,
+          child: Stack(
+            children:
+                _showControls
+                    ? [
+                      // --- TOP BAR (Back + Metadata) ---
+
+                      // Back Button
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).padding.top + 10,
+                            left: 16,
+                          ),
+                          child: GlassIconButton(
+                            size: 44,
+                            iconSize: 20,
+                            onPressed: _handleBack,
+                            icon: Icons.arrow_back_ios_new,
+                            quality: GlassQuality.premium,
+                          ),
+                        ),
+                      ),
+
+                      // Metadata (Top Center)
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).padding.top + 8,
+                          ),
+                          child: GlassCard(
+                            width: 200,
+                            height: 50,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                            ),
+                            shape: const LiquidRoundedRectangle(
+                              borderRadius: 12,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _currentItem.asset?.title ?? 'Photo',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  _formatDate(_currentItem.createDate),
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // --- BOTTOM CONTROLS ---
+
+                      // Share (Bottom Left)
+                      Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 40, left: 24),
+                          child: GlassButton(
+                            width: 48,
+                            height: 48,
+                            onTap: _handleShare,
+                            icon: Icons.ios_share,
+                            iconColor: GlassColors.accentBlue,
+                            shape: const LiquidRoundedRectangle(
+                              borderRadius: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Delete (Bottom Right)
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 40, right: 24),
+                          child: GlassButton(
+                            width: 48,
+                            height: 48,
+                            onTap: _handleDelete,
+                            icon: Icons.delete_outline,
+                            iconColor: Colors.redAccent,
+                            shape: const LiquidRoundedRectangle(
+                              borderRadius: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Action Pill (Bottom Center) - Favorite & Edit
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 34),
+                          child: SizedBox(
+                            width: 140,
+                            height: 60,
+                            child: GlassButtonGroup(
+                              borderRadius: 30,
+                              children: [
+                                Expanded(
+                                  child: IconButton(
+                                    icon: Icon(
+                                      _currentItem.isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color:
+                                          _currentItem.isFavorite
+                                              ? Colors.red
+                                              : Colors.white,
+                                    ),
+                                    onPressed: _toggleFavorite,
+                                  ),
+                                ),
+                                if (!_currentItem.isVideo)
+                                  Expanded(
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.tune,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: _openEditor,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]
+                    : [],
           ),
-          
-          // Delete (Bottom Right)
-          LiquidButton(
-            width: 48, height: 48,
-            position: LiquidGlassAlignPosition(
-              alignment: Alignment.bottomRight,
-              margin: const EdgeInsets.only(bottom: 40, right: 24),
-            ),
-            shape: RoundedRectangleShape(cornerRadius: 24),
-            child: IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: _handleDelete,
-            ),
-          ),
-          
-          // Action Pill (Bottom Center) - Favorite & Edit
-          LiquidButton(
-            width: 140, height: 60,
-            position: LiquidGlassAlignPosition(
-              alignment: Alignment.bottomCenter,
-              margin: const EdgeInsets.only(bottom: 34),
-            ),
-            shape: RoundedRectangleShape(cornerRadius: 30),
-            color: Colors.black.withValues(alpha: 0.3), // Darker for pill
-            blur: const LiquidGlassBlur(sigmaX: 15, sigmaY: 15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _currentItem.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _currentItem.isFavorite ? Colors.red : Colors.white,
-                  ),
-                  onPressed: _toggleFavorite,
-                ),
-                if (!_currentItem.isVideo) ...[
-                  Container(width: 1, height: 20, color: Colors.white24),
-                  IconButton(
-                    icon: const Icon(Icons.tune, color: Colors.white),
-                    onPressed: _openEditor,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ] : [],
+        ),
       ),
     );
   }
@@ -456,7 +533,11 @@ class _VideoPage extends StatefulWidget {
   final VideoPlayerController? controller;
   final bool isFocused;
 
-  const _VideoPage({required this.mediaItem, this.controller, required this.isFocused});
+  const _VideoPage({
+    required this.mediaItem,
+    this.controller,
+    required this.isFocused,
+  });
 
   @override
   State<_VideoPage> createState() => _VideoPageState();
@@ -472,17 +553,19 @@ class _VideoPageState extends State<_VideoPage> {
     _activeController = widget.controller;
     _initialize();
   }
-  
+
   @override
   void didUpdateWidget(_VideoPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.controller != oldWidget.controller) {
-       _activeController = widget.controller;
-       _initialize();
+      _activeController = widget.controller;
+      _initialize();
     }
-    
+
     // Auto Play/Pause
-    if (widget.isFocused != oldWidget.isFocused && _initialized && _activeController != null) {
+    if (widget.isFocused != oldWidget.isFocused &&
+        _initialized &&
+        _activeController != null) {
       if (widget.isFocused) {
         _activeController!.play();
       } else {
@@ -495,20 +578,22 @@ class _VideoPageState extends State<_VideoPage> {
     if (_activeController == null) {
       // Create if missing (fallback)
       if (widget.mediaItem.asset != null) {
-         final file = await widget.mediaItem.asset!.file;
-         if (file != null) {
-           _activeController = VideoPlayerController.file(file);
-           await _activeController!.initialize();
-         }
+        final file = await widget.mediaItem.asset!.file;
+        if (file != null) {
+          _activeController = VideoPlayerController.file(file);
+          await _activeController!.initialize();
+        }
       }
     }
-    
-    if (mounted && _activeController != null && _activeController!.value.isInitialized) {
+
+    if (mounted &&
+        _activeController != null &&
+        _activeController!.value.isInitialized) {
       setState(() => _initialized = true);
       if (widget.isFocused) _activeController!.play();
     }
   }
-  
+
   @override
   void dispose() {
     // Controller disposal handled by parent pool, unless we created a temp one here?
@@ -520,14 +605,19 @@ class _VideoPageState extends State<_VideoPage> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized || _activeController == null) {
-       // Thumbnail placeholder
-       if (widget.mediaItem.asset != null) {
-          return ExtendedImage(
-             image: AssetEntityImageProvider(widget.mediaItem.asset!, isOriginal: false),
-             fit: BoxFit.contain,
-          );
-       }
-       return const Center(child: CircularProgressIndicator(color: Colors.white24));
+      // Thumbnail placeholder
+      if (widget.mediaItem.asset != null) {
+        return ExtendedImage(
+          image: AssetEntityImageProvider(
+            widget.mediaItem.asset!,
+            isOriginal: false,
+          ),
+          fit: BoxFit.contain,
+        );
+      }
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white24),
+      );
     }
 
     return Center(

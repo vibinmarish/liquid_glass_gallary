@@ -1,4 +1,3 @@
-
 /// Centralized configuration for Liquid Glass Photos
 class AppConfig {
   AppConfig._();

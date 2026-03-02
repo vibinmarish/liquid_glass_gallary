@@ -4,20 +4,21 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../theme/glass_theme.dart';
+import '../theme/glass_settings.dart';
 import '../providers/album_provider.dart';
 import '../providers/media_index_provider.dart';
 import '../models/media_item.dart';
-import '../widgets/liquid_button.dart';
 import 'gallery_viewer.dart';
 import 'package:share_plus/share_plus.dart';
+import '../providers/ui_provider.dart';
 
 /// iOS 26 style Album Detail screen
 /// Matches Library screen features: pinch-to-zoom, select mode, overlay viewer
 class AlbumDetailScreen extends StatefulWidget {
   final Album album;
-  
+
   const AlbumDetailScreen({super.key, required this.album});
 
   @override
@@ -27,26 +28,26 @@ class AlbumDetailScreen extends StatefulWidget {
 class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   List<MediaItem> _mediaItems = [];
   bool _isLoading = true;
-  
+
   // Grid density
   int _columnCount = 3;
   static const int _minColumns = 2;
   static const int _maxColumns = 5;
-  
+
   // Select mode
   bool _isSelectMode = false;
   final Set<String> _selectedIds = {};
-  
+
   // Overlay Viewer state
   bool _showViewer = false;
   int _viewerInitialIndex = 0;
-  
+
   @override
   void initState() {
     super.initState();
     _loadAlbumMedia();
   }
-  
+
   Future<void> _loadAlbumMedia() async {
     if (widget.album.id == 'favorites') {
       final favs = context.read<MediaIndexProvider>().favoriteItems;
@@ -61,38 +62,49 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       if (kIsWeb) {
         // Mock data for web demo
         await Future.delayed(const Duration(milliseconds: 500));
-        _mediaItems = List.generate(12, (index) => MediaItem(
-          id: 'album_item_$index',
-          isVideo: index % 4 == 0,
-          webUrl: 'https://picsum.photos/seed/album_$index/400/400',
-          createDate: DateTime.now().subtract(Duration(days: index)),
-        ));
+        _mediaItems = List.generate(
+          12,
+          (index) => MediaItem(
+            id: 'album_item_$index',
+            isVideo: index % 4 == 0,
+            webUrl: 'https://picsum.photos/seed/album_$index/400/400',
+            createDate: DateTime.now().subtract(Duration(days: index)),
+          ),
+        );
       }
       setState(() => _isLoading = false);
       return;
     }
-    
+
     try {
       final assets = await widget.album.assetPath!.getAssetListRange(
         start: 0,
         end: 500,
       );
-      
-      final items = assets.map((asset) => MediaItem(
-        id: asset.id,
-        asset: asset,
-        isVideo: asset.type == AssetType.video,
-        duration: asset.type == AssetType.video ? asset.duration * 1000 : null,
-        createDate: asset.createDateTime,
-      )).toList();
-      
+
+      final items =
+          assets
+              .map(
+                (asset) => MediaItem(
+                  id: asset.id,
+                  asset: asset,
+                  isVideo: asset.type == AssetType.video,
+                  duration:
+                      asset.type == AssetType.video
+                          ? asset.duration * 1000
+                          : null,
+                  createDate: asset.createDateTime,
+                ),
+              )
+              .toList();
+
       // Sort latest first
       items.sort((a, b) {
         final dateA = a.createDate ?? DateTime(1970);
         final dateB = b.createDate ?? DateTime(1970);
         return dateB.compareTo(dateA);
       });
-      
+
       if (mounted) {
         setState(() {
           _mediaItems = items;
@@ -125,7 +137,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     });
     HapticFeedback.mediumImpact();
   }
-  
+
   void _toggleSelection(String id) {
     setState(() {
       if (_selectedIds.contains(id)) {
@@ -147,7 +159,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   Future<void> _shareSelected() async {
     if (_selectedIds.isEmpty) return;
     HapticFeedback.mediumImpact();
-    
+
     final List<XFile> xFiles = [];
     for (final id in _selectedIds) {
       final item = _mediaItems.firstWhere((i) => i.id == id);
@@ -156,7 +168,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         xFiles.add(XFile(file.path));
       }
     }
-    
+
     if (xFiles.isNotEmpty) {
       await Share.shareXFiles(xFiles);
       _toggleSelectMode();
@@ -166,13 +178,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   Future<void> _deleteSelected() async {
     if (_selectedIds.isEmpty) return;
     HapticFeedback.heavyImpact();
-    
+
     // In a real app, this would call a provider to delete from disk/album
     // For now, let's use the provider if available for the specific album
     if (widget.album.assetPath != null) {
       await context.read<MediaIndexProvider>().deleteMediaItems(_selectedIds);
     }
-    
+
     _toggleSelectMode();
   }
 
@@ -185,7 +197,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         slivers: [
           // App Bar placeholder
           SliverToBoxAdapter(child: SizedBox(height: 100 + topPadding)),
-          
+
           // Grid
           if (_isLoading && displayItems.isEmpty)
             const _LoadingGrid()
@@ -198,29 +210,26 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   mainAxisSpacing: 2,
                   crossAxisSpacing: 2,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = displayItems[index];
-                    return _AlbumGridItem(
-                      item: item,
-                      isSelectMode: _isSelectMode,
-                      isSelected: _selectedIds.contains(item.id),
-                      onTap: () {
-                        if (_isSelectMode) {
-                          _toggleSelection(item.id);
-                        } else {
-                          _openViewer(index);
-                        }
-                      },
-                    );
-                  },
-                  childCount: displayItems.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = displayItems[index];
+                  return _AlbumGridItem(
+                    item: item,
+                    isSelectMode: _isSelectMode,
+                    isSelected: _selectedIds.contains(item.id),
+                    onTap: () {
+                      if (_isSelectMode) {
+                        _toggleSelection(item.id);
+                      } else {
+                        _openViewer(index);
+                      }
+                    },
+                  );
+                }, childCount: displayItems.length),
               ),
             )
           else
             const _EmptyState(),
-          
+
           // Bottom padding
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -231,12 +240,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final indexProvider = context.watch<MediaIndexProvider>();
-    final displayItems = widget.album.id == 'favorites' 
-        ? indexProvider.favoriteItems 
-        : _mediaItems;
-    
+    final displayItems =
+        widget.album.id == 'favorites'
+            ? indexProvider.favoriteItems
+            : _mediaItems;
+
     final topPadding = MediaQuery.of(context).padding.top;
-    
+
     return PopScope(
       canPop: !_showViewer,
       onPopInvokedWithResult: (didPop, result) {
@@ -249,95 +259,116 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         body: Stack(
           children: [
             // Background & Glass Layer
-            LiquidGlassView(
-              backgroundWidget: _buildBackground(topPadding, displayItems),
-              realTimeCapture: true,
-              children: [
-                // Glass effect for the back button
-                if (!_showViewer)
-                   LiquidGlass(
-                    width: 40,
-                    height: 40,
-                    blur: const LiquidGlassBlur(sigmaX: 10, sigmaY: 10),
-                    chromaticAberration: 0.0,
-                    color: Colors.black.withValues(alpha: 0.1),
-                    shape: const RoundedRectangleShape(cornerRadius: 20),
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.topLeft,
-                      margin: EdgeInsets.only(top: topPadding + 16, left: 16),
-                    ),
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      behavior: HitTestBehavior.opaque,
-                      child: const Center(
-                        child: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
-
-                // Glass effect for the Select button
-                if (!_showViewer)
-                  LiquidButton(
-                    width: 80,
-                    height: 40,
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.topRight,
-                      margin: EdgeInsets.only(top: topPadding + 16, right: 16),
-                    ),
-                    child: GestureDetector(
-                      onTap: _toggleSelectMode,
-                      behavior: HitTestBehavior.opaque,
-                      child: Center(
-                        child: Text(
-                          _isSelectMode ? 'Cancel' : 'Select',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+            LiquidGlassScope.stack(
+              background: _buildBackground(topPadding, displayItems),
+              content: AdaptiveLiquidGlassLayer(
+                quality: GlassQuality.premium,
+                settings: AppGlassSettings.bottomBar,
+                child: Stack(
+                  children: [
+                    // Glass effect for the back button
+                    if (!_showViewer)
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: topPadding + 16,
+                            left: 16,
+                          ),
+                          child: GlassIconButton(
+                            size: 40,
+                            iconSize: 18,
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icons.arrow_back_ios_new,
+                            quality: GlassQuality.premium,
                           ),
                         ),
                       ),
-                    ),
-                  ),
 
-                // Selection Toolbar (Bottom)
-                if (_isSelectMode && !_showViewer)
-                  LiquidGlass(
-                    width: 160,
-                    height: 60,
-                    blur: const LiquidGlassBlur(sigmaX: 12, sigmaY: 12),
-                    chromaticAberration: 0.0,
-                    color: Colors.white.withValues(alpha: 0.1),
-                    shape: RoundedRectangleShape(cornerRadius: 30),
-                    position: LiquidGlassAlignPosition(
-                      alignment: Alignment.bottomCenter,
-                      margin: EdgeInsets.only(bottom: 32 + MediaQuery.of(context).padding.bottom),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _ToolbarAction(
-                          icon: Icons.ios_share_rounded, 
-                          onTap: _selectedIds.isNotEmpty ? _shareSelected : null,
-                          isEnabled: _selectedIds.isNotEmpty,
+                    // Glass effect for the Select button
+                    if (!_showViewer)
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: topPadding + 16,
+                            right: 16,
+                          ),
+                          child: GlassButton.custom(
+                            width: 80,
+                            height: 40,
+                            onTap: _toggleSelectMode,
+                            shape: const LiquidRoundedRectangle(
+                              borderRadius: 20,
+                            ),
+                            child: Center(
+                              child: Text(
+                                _isSelectMode ? 'Cancel' : 'Select',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        Container(
-                          width: 1,
-                          height: 24,
-                          color: Colors.white.withValues(alpha: 0.2),
+                      ),
+
+                    // Selection Toolbar (Bottom)
+                    if (_isSelectMode && !_showViewer)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: 25 + MediaQuery.of(context).padding.bottom,
+                          ),
+                          child: GlassToolbar(
+                            height: 60,
+                            padding: EdgeInsets.zero,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    GlassIconButton(
+                                      onPressed:
+                                          _selectedIds.isNotEmpty
+                                              ? _shareSelected
+                                              : null,
+                                      icon: Icons.ios_share_rounded,
+                                      size: 44,
+                                      iconSize: 24,
+                                      quality: GlassQuality.premium,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 24,
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                    ),
+                                    GlassIconButton(
+                                      onPressed:
+                                          _selectedIds.isNotEmpty
+                                              ? _deleteSelected
+                                              : null,
+                                      icon: Icons.delete_outline_rounded,
+                                      size: 44,
+                                      iconSize: 24,
+                                      glowColor: Colors.redAccent,
+                                      quality: GlassQuality.premium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        _ToolbarAction(
-                          icon: Icons.delete_outline_rounded, 
-                          onTap: _selectedIds.isNotEmpty ? _deleteSelected : null,
-                          isEnabled: _selectedIds.isNotEmpty,
-                          color: Colors.redAccent,
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+                      ),
+                  ],
+                ),
+              ),
             ),
-            
+
             // Interaction & Content Layer
             if (!_showViewer) ...[
               const _TopVignette(),
@@ -356,10 +387,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   return GalleryViewer(
                     galleryItems: displayItems,
                     initialIndex: _viewerInitialIndex,
-                    onPageChanged: (index) => setState(() => _viewerInitialIndex = index),
+                    onPageChanged:
+                        (index) => setState(() => _viewerInitialIndex = index),
                     onClose: () => setState(() => _showViewer = false),
                   );
-                }
+                },
               ),
             ],
           ],
@@ -375,7 +407,7 @@ class _AlbumTopBar extends StatelessWidget {
   final int itemCount;
   final bool isSelectMode;
   final int selectedCount;
-  
+
   const _AlbumTopBar({
     required this.album,
     required this.itemCount,
@@ -386,7 +418,7 @@ class _AlbumTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    
+
     return Padding(
       padding: EdgeInsets.only(top: topPadding + 16, left: 16, right: 16),
       child: Row(
@@ -394,7 +426,7 @@ class _AlbumTopBar extends StatelessWidget {
         children: [
           // Left segment placeholder for spacing with back button glass
           const SizedBox(width: 48),
-          
+
           // Center: Title & Subtitle
           Expanded(
             child: Column(
@@ -409,9 +441,11 @@ class _AlbumTopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isSelectMode 
-                    ? (selectedCount > 0 ? '$selectedCount Selected' : 'Select Items')
-                    : '$itemCount Items',
+                  isSelectMode
+                      ? (selectedCount > 0
+                          ? '$selectedCount Selected'
+                          : 'Select Items')
+                      : '$itemCount Items',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 13,
@@ -421,7 +455,7 @@ class _AlbumTopBar extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Right segment placeholder for Select button glass
           const SizedBox(width: 80),
         ],
@@ -435,7 +469,7 @@ class _AlbumGridItem extends StatelessWidget {
   final bool isSelectMode;
   final bool isSelected;
   final VoidCallback onTap;
-  
+
   const _AlbumGridItem({
     required this.item,
     required this.isSelectMode,
@@ -447,11 +481,17 @@ class _AlbumGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPressStart: (details) {
+        if (!isSelectMode) {
+          HapticFeedback.mediumImpact();
+          context.read<UIProvider>().showContextMenu(item, details.globalPosition);
+        }
+      },
       child: Stack(
         fit: StackFit.expand,
         children: [
           if (kIsWeb && item.webUrl != null)
-             Image.network(item.webUrl!, fit: BoxFit.cover)
+            Image.network(item.webUrl!, fit: BoxFit.cover)
           else if (item.asset != null)
             AssetEntityImage(
               item.asset!,
@@ -465,24 +505,34 @@ class _AlbumGridItem extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: GlassColors.surfaceContainer,
-                  child: Icon(Icons.broken_image, color: GlassColors.glassWhite40),
+                  child: Icon(
+                    Icons.broken_image,
+                    color: GlassColors.glassWhite40,
+                  ),
                 );
               },
             )
           else
             Container(color: GlassColors.surfaceContainer),
-          
+
           if (item.isVideo)
             Positioned(
               bottom: 4,
               right: 4,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 14,
+                ),
               ),
             ),
-            
+
           if (isSelectMode)
             Positioned(
               top: 4,
@@ -495,7 +545,10 @@ class _AlbumGridItem extends StatelessWidget {
                   color: isSelected ? GlassColors.primary : Colors.black26,
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),
-                child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                child:
+                    isSelected
+                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                        : null,
               ),
             ),
         ],
@@ -510,7 +563,9 @@ class _LoadingGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverGrid(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, mainAxisSpacing: 2, crossAxisSpacing: 2,
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
       ),
       delegate: SliverChildBuilderDelegate(
         (context, index) => Container(color: GlassColors.surfaceContainer),
@@ -529,9 +584,16 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.photo_library_outlined, size: 64, color: GlassColors.glassWhite40),
+            Icon(
+              Icons.photo_library_outlined,
+              size: 64,
+              color: GlassColors.glassWhite40,
+            ),
             const SizedBox(height: 16),
-            Text('No photos here', style: TextStyle(color: GlassColors.glassWhite60)),
+            Text(
+              'No photos here',
+              style: TextStyle(color: GlassColors.glassWhite60),
+            ),
           ],
         ),
       ),
@@ -539,35 +601,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Helper widgets for standard iOS 26 top bar layout
-
-class _ToolbarAction extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool isEnabled;
-  final Color? color;
-
-  const _ToolbarAction({
-    required this.icon,
-    required this.onTap,
-    required this.isEnabled,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(
-        icon,
-        color: isEnabled 
-            ? (color ?? Colors.white) 
-            : Colors.white.withValues(alpha: 0.3),
-        size: 24,
-      ),
-    );
-  }
-}
 
 class _TopVignette extends StatelessWidget {
   const _TopVignette();

@@ -17,8 +17,7 @@ dependencies:
   
   # Photo/Video access
   photo_manager: ^3.6.4
-  liquid_glass_easy: ^1.1.1
-  
+  liquid_glass_widgets: ^0.3.0-dev.1
   # Image Rendering & Optimization
   extended_image: ^8.2.0
   keframe: ^3.0.0

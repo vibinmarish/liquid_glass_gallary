@@ -11,18 +11,21 @@ class GalleryThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ExtendedImage(
-      // ✅ FIX: Use Provider instead of FutureBuilder. 
+      // ✅ FIX: Use Provider instead of FutureBuilder.
       // It auto-caches the thumbnail bytes, so rebuilds are instant (0ms).
       image: AssetEntityImageProvider(
         asset,
         isOriginal: false, // Fetch thumbnail
-        thumbnailSize: const ThumbnailSize.square(200), // Higher res for modern phones
+        thumbnailSize: const ThumbnailSize.square(
+          200,
+        ), // Higher res for modern phones
         thumbnailFormat: ThumbnailFormat.jpeg, // Faster decode
       ),
       fit: BoxFit.cover,
       gaplessPlayback: true, // Prevents white flash during scrolling
       enableMemoryCache: true,
-      clearMemoryCacheWhenDispose: false, // ✅ FIX: Keep cache when scrolling off-screen
+      clearMemoryCacheWhenDispose:
+          false, // ✅ FIX: Keep cache when scrolling off-screen
       loadStateChanged: (ExtendedImageState state) {
         switch (state.extendedImageLoadState) {
           case LoadState.completed:
