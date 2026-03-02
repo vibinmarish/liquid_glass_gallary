@@ -160,9 +160,6 @@ class MediaIndexProvider extends ChangeNotifier {
       if (_mediaItems.isNotEmpty) {
         _saveCountToCache();
       }
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error loading media: $e');
     } finally {
       _finishLoading();
     }
@@ -179,11 +176,8 @@ class MediaIndexProvider extends ChangeNotifier {
     _isFetching = true;
     notifyListeners(); // ⚡️ Notify start to show loading state
 
-    // debugPrint('LoadMore: Starting request for Page ${_currentPage + 1}...');
-
     try {
       final batch = await _fetchNextBatch(_currentPage + 1);
-      // debugPrint('LoadMore: Fetch completed. Found ${batch.items.length} items.');
 
       if (batch.items.isNotEmpty) {
         _mediaItems.addAll(batch.items);
@@ -193,8 +187,6 @@ class MediaIndexProvider extends ChangeNotifier {
       } else {
         _hasMore = false;
       }
-    } catch (e) {
-      debugPrint('Error loading more media: $e');
     } finally {
       _isFetching = false;
       notifyListeners(); // ⚡️ Notify end to trigger UI update (and potential next fetch)
@@ -272,7 +264,7 @@ class MediaIndexProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error loading cached count: $e');
+      // Ignored
     }
   }
 
@@ -282,7 +274,7 @@ class MediaIndexProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('media_count_cache', _totalAssetsFound);
     } catch (e) {
-      debugPrint('Error saving cached count: $e');
+      // Ignored
     }
   }
 
@@ -326,7 +318,7 @@ class MediaIndexProvider extends ChangeNotifier {
           notifyListeners();
         }
       } catch (e) {
-        debugPrint('User cancelled or deletion failed: $e');
+        // Ignored
       }
     }
   }
@@ -354,7 +346,7 @@ class MediaIndexProvider extends ChangeNotifier {
           }
         }
       } catch (e) {
-        debugPrint('Error toggling favorite: $e');
+        // Ignored
       }
     }
   }

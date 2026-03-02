@@ -20,10 +20,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize();
 
-  // Restore previous performance-oriented cache limits
-  PaintingBinding.instance.imageCache.maximumSizeBytes =
-      300 * 1024 * 1024; // 300MB
-  PaintingBinding.instance.imageCache.maximumSize = 2000; // Original high limit
+  // ⚡️ PERFORMANCE: Balanced cache limits. 
+  // 200MB and 1000 items provides a good balance between grid scrolling smoothness 
+  // and memory footprint, helping the app stay in memory when backgrounded.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024; // 200MB
+  PaintingBinding.instance.imageCache.maximumSize = 1000;
 
   // Create provider BEFORE runApp so we can pass it via .value()
   final mediaIndexProvider = MediaIndexProvider();
@@ -95,9 +96,6 @@ class _AppEntryState extends State<AppEntry> {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Critical: Permission check failed -> $e');
-      }
       if (mounted) {
         setState(() {
           _isChecking = false;

@@ -56,9 +56,6 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
   final ScrollStateManager _scrollManager = ScrollStateManager();
   MediaIndexProvider? _mediaProvider;
   
-  // Lifecycle: prevent keframe from scheduling raster work while backgrounded (Skia SIGSEGV fix)
-  bool _isAppActive = true;
-  
   // Grid density animation
   late AnimationController _columnAnimationController;
   late Animation<double> _columnOpacity;
@@ -114,11 +111,9 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final wasActive = _isAppActive;
-    _isAppActive = state == AppLifecycleState.resumed;
-    if (_isAppActive != wasActive && mounted) {
-      setState(() {});
-    }
+    // ⚡️ STABILIZATION: Removed the Skia SIGSEGV fix that was swapping the widget tree.
+    // Swapping between FrameSeparateWidget and raw items based on lifecycle caused
+    // a visible "reload" effect when notification shades were toggled.
   }
 
   @override
@@ -365,7 +360,6 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                 },
                               );
 
-                              if (!_isAppActive) return gridChild;
                               return FrameSeparateWidget(
                                 index: index,
                                 placeHolder: const ColoredBox(color: Color(0xFF202020)),
@@ -417,7 +411,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
               if (ui.contextMenuItem != null || ui.deleteConfirmItem != null) {
                 return Positioned.fill(
                   child: GestureDetector(
-                    onTap: () => ui.closeAllOverlays(),
+                    onTap: () => ui.clearOverlays(),
                     behavior: HitTestBehavior.opaque,
                     child: Container(color: Colors.black.withValues(alpha: 0.4)),
                   ),

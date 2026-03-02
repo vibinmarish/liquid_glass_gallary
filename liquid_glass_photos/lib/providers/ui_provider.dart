@@ -53,7 +53,7 @@ class UIProvider extends ChangeNotifier {
   }
 
   // --- Shared Close Helpers ---
-  void closeAllOverlays() {
+  void clearOverlays() {
     bool changed = false;
     if (_contextMenuItem != null) {
       _contextMenuItem = null;

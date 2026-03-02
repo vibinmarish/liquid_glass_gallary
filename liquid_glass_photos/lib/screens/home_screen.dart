@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui' as ui;
 import 'package:provider/provider.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../widgets/adaptive_glass_menu.dart';
@@ -31,7 +32,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   int _gridColumnCount = AppConfig.defaultColumns;
-  bool _isAppActive = true;
 
   @override
   void initState() {
@@ -52,15 +52,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final wasActive = _isAppActive;
-    _isAppActive = state == AppLifecycleState.resumed;
-    if (_isAppActive != wasActive && mounted) {
-      setState(() {});
-    }
     if (state == AppLifecycleState.resumed) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) context.read<MediaIndexProvider>().loadMedia();
-      });
+      // ⚡️ PERFORMANCE: Only check for media changes on resume if absolutely necessary.
+      // We already have PhotoManager.addChangeCallback in initialize() which handles 
+      // real-time updates. Removing the aggressive loadMedia(showLoadingIndicator: false)
+      // here prevents the grid from resetting when notification shades are toggled.
     }
   }
 
@@ -126,17 +122,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final selection = context.read<SelectionProvider>();
     final viewerState = context.read<ViewerState>();
     final scrollManager = context.read<ScrollStateManager>();
+    final ui = context.read<UIProvider>();
 
+    // 1. Close overlays first
+    if (ui.contextMenuItem != null ||
+        ui.deleteConfirmItem != null ||
+        ui.showNewAlbumDialog) {
+      ui.clearOverlays();
+      return true;
+    }
+
+    // 2. Close viewer
     if (viewerState.isViewerOpen) {
       _closeViewer();
       return true;
     }
 
+    // 3. De-select
     if (selection.isSelectMode) {
       selection.setSelectMode(false);
       return true;
     }
 
+    // 4. Return to Library tab
     if (_selectedIndex != 0) {
       scrollManager.savePosition('tab_$_selectedIndex');
       setState(() => _selectedIndex = 0);
@@ -198,6 +206,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // 🔍 DIAGNOSTIC: Check rendering capabilities on each device
+    debugPrint('🔍 Impeller shader support: ${ui.ImageFilter.isShaderFilterSupported}');
+    debugPrint('🔍 Device Pixel Ratio: ${MediaQuery.of(context).devicePixelRatio}');
+    debugPrint('🔍 Screen size: ${MediaQuery.of(context).size}');
+
     // ⚡️ FIX: Selectors for UI visibility
     final isSelectMode = context.select<SelectionProvider, bool>(
       (p) => p.isSelectMode,
@@ -208,14 +221,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isViewerOpen = context.select<ViewerState, bool>(
       (p) => p.isViewerOpen,
     );
+    final hasOverlay = context.select<UIProvider, bool>(
+      (p) =>
+          p.contextMenuItem != null ||
+          p.deleteConfirmItem != null ||
+          p.showNewAlbumDialog,
+    );
 
     return PopScope(
-      canPop: false,
+      // ⚡️ PERFORMANCE: Allow standard system backgrounding if we're at the root of the app.
+      // If we're on the main library tab with no selection/viewer open, we allow the OS
+      // to handle the back press (which usually backgrounds the activity on modern Android).
+      canPop:
+          !isViewerOpen && !isSelectMode && _selectedIndex == 0 && !hasOverlay,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          if (!_handleBackPress()) {
-            SystemNavigator.pop();
-          }
+          // Manual handling for non-root states
+          _handleBackPress();
         }
       },
       child: Scaffold(
@@ -227,59 +249,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               background: _buildBackgroundContent(),
               content: Stack(
                 children: [
-                  // Root glass layer — all children inherit these settings
+                  // Root glass layer — bottom bar, select button, overlays, toolbar
                   AdaptiveLiquidGlassLayer(
                     quality: GlassQuality.premium,
                     settings: AppGlassSettings.bottomBar,
                     child: Stack(
                       children: [
-                        // Grid Size Menu
-                        if (!isSelectMode &&
-                            !isViewerOpen &&
-                            _selectedIndex == 0)
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                bottom: 25 + bottomPadding,
-                                right: 16,
-                              ),
-                                  child: AdaptiveGlassMenu(
-                                    alignment: Alignment.bottomRight,
-                                    menuWidth: 220,
-                                    menuBorderRadius: 24,
-                                    glassSettings: AppGlassSettings.menu,
-                                    triggerBuilder: (context, toggleMenu) {
-                                  return GlassButton(
-                                    width: 70,
-                                    height: 70,
-                                    icon: Icons.grid_view_rounded,
-                                    iconColor:
-                                        isDark ? Colors.white : Colors.black87,
-                                    onTap: toggleMenu,
-                                    shape: const LiquidRoundedSuperellipse(
-                                      borderRadius: 35,
-                                    ),
-                                  );
-                                },
-                                items: [
-                                  for (int i = 3; i <= 6; i++)
-                                    GlassMenuItem(
-                                      title: '$i Columns',
-                                      icon:
-                                          _gridColumnCount == i
-                                              ? Icons.check_circle
-                                              : Icons.circle_outlined,
-                                      onTap: () {
-                                        setState(() => _gridColumnCount = i);
-                                        HapticFeedback.mediumImpact();
-                                      },
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-
                         // Select Button (Global)
                         if (!isViewerOpen && _selectedIndex == 0)
                           Align(
@@ -435,6 +410,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
+
+                  // Grid Size Menu — separate glass layer to prevent
+                  // bottom bar flicker when the menu toggles
+                  if (!isSelectMode &&
+                      !isViewerOpen &&
+                      _selectedIndex == 0)
+                    AdaptiveLiquidGlassLayer(
+                      quality: GlassQuality.premium,
+                      settings: AppGlassSettings.bottomBar,
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: 25 + bottomPadding,
+                            right: 16,
+                          ),
+                              child: AdaptiveGlassMenu(
+                                alignment: Alignment.bottomRight,
+                                menuWidth: 220,
+                                menuBorderRadius: 24,
+                                glassSettings: AppGlassSettings.menu,
+                                triggerBuilder: (context, toggleMenu) {
+                              return GlassButton(
+                                width: 70,
+                                height: 70,
+                                icon: Icons.grid_view_rounded,
+                                iconColor:
+                                    isDark ? Colors.white : Colors.black87,
+                                onTap: toggleMenu,
+                                shape: const LiquidRoundedSuperellipse(
+                                  borderRadius: 35,
+                                ),
+                              );
+                            },
+                            items: [
+                              for (int i = 3; i <= 6; i++)
+                                GlassMenuItem(
+                                  title: '$i Columns',
+                                  icon:
+                                      _gridColumnCount == i
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                  onTap: () {
+                                    setState(() => _gridColumnCount = i);
+                                    HapticFeedback.mediumImpact();
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

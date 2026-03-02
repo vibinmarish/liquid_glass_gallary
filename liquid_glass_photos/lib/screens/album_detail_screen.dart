@@ -138,6 +138,21 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     HapticFeedback.mediumImpact();
   }
 
+  /// Handle back button press via PopScope
+  bool _handleBackPress() {
+    if (_showViewer) {
+      setState(() => _showViewer = false);
+      return true;
+    }
+
+    if (_isSelectMode) {
+      _toggleSelectMode();
+      return true;
+    }
+
+    return false;
+  }
+
   void _toggleSelection(String id) {
     setState(() {
       if (_selectedIds.contains(id)) {
@@ -248,10 +263,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return PopScope(
-      canPop: !_showViewer,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _showViewer) {
-          setState(() => _showViewer = false);
+        if (!didPop) {
+          if (!_handleBackPress()) {
+            Navigator.pop(context);
+          }
         }
       },
       child: Scaffold(
@@ -321,46 +338,48 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         alignment: Alignment.bottomCenter,
                         child: Padding(
                           padding: EdgeInsets.only(
-                            bottom: 25 + MediaQuery.of(context).padding.bottom,
+                            bottom: 32 + MediaQuery.of(context).padding.bottom,
                           ),
-                          child: GlassToolbar(
-                            height: 60,
-                            padding: EdgeInsets.zero,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    GlassIconButton(
-                                      onPressed:
-                                          _selectedIds.isNotEmpty
-                                              ? _shareSelected
-                                              : null,
-                                      icon: Icons.ios_share_rounded,
-                                      size: 44,
-                                      iconSize: 24,
-                                      quality: GlassQuality.premium,
-                                    ),
-                                    Container(
-                                      width: 1,
-                                      height: 24,
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                    ),
-                                    GlassIconButton(
-                                      onPressed:
-                                          _selectedIds.isNotEmpty
-                                              ? _deleteSelected
-                                              : null,
-                                      icon: Icons.delete_outline_rounded,
-                                      size: 44,
-                                      iconSize: 24,
-                                      glowColor: Colors.redAccent,
-                                      quality: GlassQuality.premium,
-                                    ),
-                                  ],
+                          child: GlassContainer(
+                            width: 140,
+                            height: 64,
+                            useOwnLayer: true,
+                            quality: GlassQuality.premium,
+                            settings: AppGlassSettings.menu,
+                            shape: const LiquidRoundedSuperellipse(
+                              borderRadius: 32,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                GlassIconButton(
+                                  onPressed:
+                                      _selectedIds.isNotEmpty
+                                          ? _shareSelected
+                                          : null,
+                                  icon: Icons.ios_share_rounded,
+                                  size: 44,
+                                  iconSize: 24,
+                                  quality: GlassQuality.premium,
                                 ),
-                              ),
-                            ],
+                                Container(
+                                  width: 1,
+                                  height: 24,
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                                GlassIconButton(
+                                  onPressed:
+                                      _selectedIds.isNotEmpty
+                                          ? _deleteSelected
+                                          : null,
+                                  icon: Icons.delete_outline_rounded,
+                                  size: 44,
+                                  iconSize: 24,
+                                  glowColor: Colors.redAccent,
+                                  quality: GlassQuality.premium,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

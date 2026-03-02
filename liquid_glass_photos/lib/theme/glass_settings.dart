@@ -71,3 +71,27 @@ class AppGlassSettings {
     refractiveIndex: 1.5,
   );
 }
+
+/// Recommended presets for different UI surfaces.
+class RecommendedGlassSettings {
+  /// Lightweight surface for app bars and sidebars.
+  static const surface = LiquidGlassSettings(
+    thickness: 10,
+    blur: 1.5,
+    refractiveIndex: 1.2,
+    lightIntensity: 0.4,
+    ambientStrength: 0.8,
+  );
+
+  /// Thick, rich glass for floating overlays and cards.
+  static const overlay = LiquidGlassSettings(
+    thickness: 30,
+    blur: 2.5,
+    refractiveIndex: 1.59,
+    lightAngle: 0.7853981633974483, // 0.25 * pi
+    lightIntensity: 0.6,
+    ambientStrength: 1,
+    saturation: 0.7,
+    chromaticAberration: 0.002,
+  );
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:provider/provider.dart';
@@ -58,6 +59,9 @@ class _GalleryViewerState extends State<GalleryViewer>
   // Video Controller Pool
   final Map<String, VideoPlayerController> _controllerPool = {};
 
+  // Progressive loading: track which pages have full-res ready
+  final Set<int> _fullResReady = {};
+
   @override
   void initState() {
     super.initState();
@@ -75,46 +79,87 @@ class _GalleryViewerState extends State<GalleryViewer>
       curve: Curves.easeInOut,
     );
 
-    // _startAutoHideTimer(); // ⚡️ FIX: Disable auto-hide
-
-    // Initial filmstrip scroll
+    // Initial filmstrip scroll + load full-res for initial page
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToFilmstripIndex(_currentIndex, animate: false);
+      _scheduleFullResLoad(_currentIndex, delay: Duration.zero);
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Use explicit items if provided, otherwise watch provider
+    // Decoupled provider: use read + manual listener to prevent mid-swipe rebuilds
     if (widget.galleryItems != null) {
       _allMedia = widget.galleryItems!;
     } else {
-      _allMedia = context.watch<MediaIndexProvider>().mediaItems;
+      final provider = context.read<MediaIndexProvider>();
+      _allMedia = provider.mediaItems;
+      provider.removeListener(_onMediaListChanged);
+      provider.addListener(_onMediaListChanged);
     }
 
     // Safety check if current index is out of bounds (e.g. after deletion)
     if (_currentIndex >= _allMedia.length) {
       if (_allMedia.isEmpty) {
-        Navigator.pop(context); // Close if empty
+        Navigator.pop(context);
       } else {
         _currentIndex = _allMedia.length - 1;
       }
     }
   }
 
+  void _onMediaListChanged() {
+    if (!mounted) return;
+    final newItems = context.read<MediaIndexProvider>().mediaItems;
+    if (newItems.length != _allMedia.length || !identical(newItems, _allMedia)) {
+      setState(() {
+        _allMedia = newItems;
+        if (_currentIndex >= _allMedia.length) {
+          if (_allMedia.isEmpty) {
+            Navigator.pop(context);
+          } else {
+            _currentIndex = _allMedia.length - 1;
+          }
+        }
+      });
+    }
+  }
+
+  /// Precache full-res into Flutter's image cache, then mark ready
+  void _scheduleFullResLoad(int index, {Duration delay = const Duration(milliseconds: 300)}) {
+    Future.delayed(delay, () {
+      if (!mounted || _currentIndex != index) return;
+      if (index >= _allMedia.length) return;
+      final item = _allMedia[index];
+      if (item.asset == null || item.isVideo) return;
+
+      final fullResProvider = AssetEntityImageProvider(
+        item.asset!,
+        isOriginal: true,
+      );
+      precacheImage(fullResProvider, context).then((_) {
+        if (mounted && _currentIndex == index) {
+          setState(() => _fullResReady.add(index));
+        }
+      }).catchError((_) {});
+    });
+  }
+
   @override
   void dispose() {
+    if (widget.galleryItems == null) {
+      try {
+        context.read<MediaIndexProvider>().removeListener(_onMediaListChanged);
+      } catch (_) {}
+    }
     _pageController.dispose();
     _filmstripController.dispose();
     _fadeController.dispose();
-
-    // Dispose video controllers
     for (final controller in _controllerPool.values) {
       controller.dispose();
     }
     _controllerPool.clear();
-
     super.dispose();
   }
 
@@ -176,7 +221,7 @@ class _GalleryViewerState extends State<GalleryViewer>
         }
       }
     } catch (e) {
-      debugPrint('Video pre-init error: $e');
+      // Ignored
     }
   }
 
@@ -269,15 +314,17 @@ class _GalleryViewerState extends State<GalleryViewer>
           fit: StackFit.expand,
           children: [
             // 1. Main Gesture PageView
-            GestureDetector(
-              onTap: _toggleControls,
-              child: ExtendedImageGesturePageView.builder(
-                controller: _pageController,
-                itemCount: _allMedia.length,
-                onPageChanged: (index) {
+            ExtendedImageGesturePageView.builder(
+              controller: _pageController,
+              itemCount: _allMedia.length,
+              physics: const ClampingScrollPhysics(),
+              onPageChanged: (index) {
                   setState(() => _currentIndex = index);
                   widget.onPageChanged?.call(index);
                   _scrollToFilmstripIndex(index);
+
+                  // Schedule full-res load after swipe settles
+                  _scheduleFullResLoad(index);
 
                   // Pre-load next video
                   if (index + 1 < _allMedia.length &&
@@ -287,34 +334,59 @@ class _GalleryViewerState extends State<GalleryViewer>
                 },
                 itemBuilder: (context, index) {
                   final item = _allMedia[index];
+                  Widget pageChild;
+
                   if (item.isVideo) {
-                    return _VideoPage(
+                    pageChild = _VideoPage(
                       mediaItem: item,
                       controller: _controllerPool[item.id],
                       isFocused: _currentIndex == index,
                     );
                   } else if (item.asset != null) {
-                    return ExtendedImage(
+                    // Progressive loading via Stack:
+                    // - Bottom: 1080px thumbnail with gesture support (never changes)
+                    // - Top: full-res overlay (passive, no gestures) once precached
+                    final thumbnailImage = ExtendedImage(
                       image: AssetEntityImageProvider(
                         item.asset!,
-                        isOriginal: true,
+                        isOriginal: false,
+                        thumbnailSize: const ThumbnailSize.square(1080),
+                        thumbnailFormat: ThumbnailFormat.jpeg,
                       ),
                       fit: BoxFit.contain,
                       mode: ExtendedImageMode.gesture,
+                      enableMemoryCache: true,
+                      clearMemoryCacheWhenDispose: false,
+                      gaplessPlayback: true,
                       initGestureConfigHandler:
                           (_) => GestureConfig(
                             inPageView: true,
-                            minScale: 0.9,
+                            minScale: 1.0,
                             maxScale: 4.0,
+                            animationMinScale: 0.7,
+                            animationMaxScale: 5.0,
+                            speed: 1.0,
+                            inertialSpeed: 100.0,
+                            initialScale: 1.0,
+                            cacheGesture: true,
                           ),
                     );
+
+                    pageChild = thumbnailImage;
+                  } else {
+                    pageChild = const Center(
+                      child: Icon(Icons.broken_image, color: Colors.grey),
+                    );
                   }
-                  return const Center(
-                    child: Icon(Icons.broken_image, color: Colors.grey),
+
+                  // Tapping is handled per-page to avoid competing with swiping
+                  return GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _toggleControls,
+                    child: pageChild,
                   );
                 },
               ),
-            ),
 
             // 2. Filmstrip (Part of background, under glass controls)
             Positioned(
@@ -369,12 +441,12 @@ class _GalleryViewerState extends State<GalleryViewer>
         ),
 
         // 3. Liquid Glass Controls (Overlay)
-        // Only visible when _showControls is true (handled by opacity/pointer events below?
-        // No, LiquidGlassView children are always visible unless we remove them.
-        content: AdaptiveLiquidGlassLayer(
-          quality: GlassQuality.premium,
-          settings: AppGlassSettings.viewerHud,
-          child: Stack(
+        content: IgnorePointer(
+          ignoring: !_showControls,
+          child: AdaptiveLiquidGlassLayer(
+            quality: GlassQuality.premium,
+            settings: AppGlassSettings.viewerHud,
+            child: Stack(
             children:
                 _showControls
                     ? [
@@ -521,6 +593,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                     : [],
           ),
         ),
+      ),
       ),
     );
   }

@@ -523,7 +523,6 @@ class _EditScreenState extends State<EditScreen> {
         ).showSnackBar(const SnackBar(content: Text("Saved to Photos")));
       }
     } catch (e) {
-      debugPrint("Save error: $e");
       if (mounted) {
         Navigator.pop(context); // Close loader
         ScaffoldMessenger.of(
