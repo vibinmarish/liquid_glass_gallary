@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../theme/glass_theme.dart';
@@ -32,7 +33,7 @@ class PermissionScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.photo_library_outlined,
+                    CupertinoIcons.photo_on_rectangle,
                     size: 80,
                     color: GlassColors.accentBlue,
                   ),

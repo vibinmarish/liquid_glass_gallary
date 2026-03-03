@@ -1,4 +1,5 @@
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
@@ -35,7 +36,7 @@ class GalleryThumbnail extends StatelessWidget {
             return const ColoredBox(
               color: Color(0xFF202020),
               child: Center(
-                child: Icon(Icons.error_outline, color: Colors.grey, size: 20),
+                child: Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.grey, size: 20),
               ),
             );
           case LoadState.loading:

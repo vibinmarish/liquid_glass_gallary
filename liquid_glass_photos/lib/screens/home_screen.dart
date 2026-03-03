@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -429,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               return GlassButton(
                                 width: 70,
                                 height: 70,
-                                icon: Icons.grid_view_rounded,
+                                icon: CupertinoIcons.square_grid_2x2,
                                 iconColor:
                                     isDark ? Colors.white : Colors.black87,
                                 onTap: toggleMenu,
@@ -444,8 +445,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   title: '$i Columns',
                                   icon:
                                       _gridColumnCount == i
-                                          ? Icons.check_circle
-                                          : Icons.circle_outlined,
+                                          ? CupertinoIcons.checkmark_alt_circle_fill
+                                          : CupertinoIcons.circle,
                                   onTap: () {
                                     setState(() => _gridColumnCount = i);
                                     HapticFeedback.mediumImpact();

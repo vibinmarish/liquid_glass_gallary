@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -65,7 +66,7 @@ class ContextMenuOverlay extends StatelessWidget {
               children: [
                 GlassMenuItem(
                   title: 'Share',
-                  icon: Icons.ios_share_rounded,
+                  icon: CupertinoIcons.share,
                   onTap: () async {
                     context.read<UIProvider>().hideContextMenu();
                     final file = await item.asset?.file;
@@ -76,7 +77,7 @@ class ContextMenuOverlay extends StatelessWidget {
                 ),
                 GlassMenuItem(
                   title: 'Add to Album',
-                  icon: Icons.add_photo_alternate_outlined,
+                  icon: CupertinoIcons.folder_badge_plus,
                   onTap: () {
                     context.read<UIProvider>().hideContextMenu();
                     context.read<UIProvider>().setShowNewAlbumDialog(true);
@@ -86,8 +87,8 @@ class ContextMenuOverlay extends StatelessWidget {
                   title: 'Favorite',
                   icon:
                       item.isFavorite
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
+                          ? CupertinoIcons.heart_fill
+                          : CupertinoIcons.heart,
                   onTap: () {
                     context.read<UIProvider>().hideContextMenu();
                     context.read<MediaIndexProvider>().toggleFavorite(item);
@@ -96,7 +97,7 @@ class ContextMenuOverlay extends StatelessWidget {
                 ),
                 GlassMenuItem(
                   title: 'Delete',
-                  icon: Icons.delete_outline_rounded,
+                  icon: CupertinoIcons.delete,
                   isDestructive: true,
                   onTap: () {
                     context.read<UIProvider>().showDeleteConfirm(item);

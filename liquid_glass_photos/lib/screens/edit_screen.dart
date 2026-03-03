@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'dart:math' as math;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -70,35 +71,35 @@ enum AdjustTool {
   IconData get icon {
     switch (this) {
       case AdjustTool.exposure:
-        return Icons.exposure;
+        return CupertinoIcons.sun_max;
       case AdjustTool.brilliance:
-        return Icons.flare;
+        return CupertinoIcons.sparkles;
       case AdjustTool.highlights:
-        return Icons.highlight;
+        return CupertinoIcons.circle_righthalf_fill;
       case AdjustTool.shadows:
-        return Icons.nights_stay;
+        return CupertinoIcons.circle_lefthalf_fill;
       case AdjustTool.contrast:
-        return Icons.contrast;
+        return CupertinoIcons.circle_fill;
       case AdjustTool.brightness:
-        return Icons.brightness_6;
+        return CupertinoIcons.sun_min;
       case AdjustTool.blackPoint:
-        return Icons.point_of_sale; // Placeholder
+        return CupertinoIcons.circle_bottomthird_split;
       case AdjustTool.saturation:
-        return Icons.stream; // Placeholder
+        return CupertinoIcons.drop;
       case AdjustTool.vibrance:
-        return Icons.blur_on;
+        return CupertinoIcons.drop_fill;
       case AdjustTool.warmth:
-        return Icons.thermostat;
+        return CupertinoIcons.thermometer;
       case AdjustTool.tint:
-        return Icons.color_lens;
+        return CupertinoIcons.paintbrush;
       case AdjustTool.sharpness:
-        return Icons.details;
+        return CupertinoIcons.triangle;
       case AdjustTool.definition:
-        return Icons.high_quality;
+        return CupertinoIcons.star;
       case AdjustTool.noiseReduction:
-        return Icons.graphic_eq;
+        return CupertinoIcons.waveform;
       case AdjustTool.vignette:
-        return Icons.vignette;
+        return CupertinoIcons.circle_grid_hex;
     }
   }
 }
@@ -704,19 +705,19 @@ class _EditScreenState extends State<EditScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _TabItem(
-                          icon: Icons.auto_awesome,
+                          icon: CupertinoIcons.wand_stars,
                           label: 'Filters',
                           isSelected: _selectedCategory == 0,
                           onTap: () => setState(() => _selectedCategory = 0),
                         ),
                         _TabItem(
-                          icon: Icons.tune,
+                          icon: CupertinoIcons.slider_horizontal_3,
                           label: 'Adjust',
                           isSelected: _selectedCategory == 1,
                           onTap: () => setState(() => _selectedCategory = 1),
                         ),
                         _TabItem(
-                          icon: Icons.crop_rotate,
+                          icon: CupertinoIcons.crop,
                           label: 'Crop',
                           isSelected: _selectedCategory == 2,
                           onTap: () => setState(() => _selectedCategory = 2),

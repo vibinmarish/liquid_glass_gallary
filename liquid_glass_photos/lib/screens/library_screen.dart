@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../providers/media_index_provider.dart';
@@ -282,7 +283,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                               ),
                                             ),
                                             child: selection.isSelected 
-                                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                              ? const Icon(CupertinoIcons.checkmark_alt, color: Colors.white, size: 14)
                                               : null,
                                           ),
                                         ),
@@ -297,7 +298,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                               color: Colors.black54, 
                                               borderRadius: BorderRadius.circular(4)
                                             ),
-                                            child: const Icon(Icons.play_arrow, color: Colors.white, size: 14),
+                                            child: const Icon(CupertinoIcons.play_fill, color: Colors.white, size: 14),
                                           ),
                                         ),
                                     ],
@@ -329,7 +330,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                     items: [
                                       GlassMenuItem(
                                         title: 'Share',
-                                        icon: Icons.ios_share_rounded,
+                                        icon: CupertinoIcons.share,
                                         onTap: () async {
                                           final file = await item.asset?.file;
                                           if (file != null) {
@@ -340,8 +341,8 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                       GlassMenuItem(
                                         title: 'Favorite',
                                         icon: item.isFavorite
-                                            ? Icons.favorite_rounded
-                                            : Icons.favorite_border_rounded,
+                                            ? CupertinoIcons.heart_fill
+                                            : CupertinoIcons.heart,
                                         onTap: () {
                                           context.read<MediaIndexProvider>().toggleFavorite(item);
                                           HapticFeedback.mediumImpact();
@@ -349,7 +350,7 @@ class _LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCl
                                       ),
                                       GlassMenuItem(
                                         title: 'Delete',
-                                        icon: Icons.delete_outline_rounded,
+                                        icon: CupertinoIcons.delete,
                                         isDestructive: true,
                                         onTap: () {
                                           context.read<UIProvider>().showDeleteConfirm(item);
@@ -514,7 +515,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.photo_library_outlined, size: 60, color: Colors.white.withValues(alpha: 0.3)),
+          Icon(CupertinoIcons.photo_on_rectangle, size: 60, color: Colors.white.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text(
             'No Photos',
@@ -541,7 +542,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 60, color: Colors.redAccent),
+            const Icon(CupertinoIcons.exclamationmark_triangle, size: 60, color: Colors.redAccent),
             const SizedBox(height: 16),
             Text(
               message,

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:extended_image/extended_image.dart';
@@ -403,7 +404,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                     pageChild = thumbnailImage;
                   } else {
                     pageChild = const Center(
-                      child: Icon(Icons.broken_image, color: Colors.grey),
+                      child: Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.grey),
                     );
                   }
 
@@ -509,7 +510,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                             size: 44,
                             iconSize: 20,
                             onPressed: _handleBack,
-                            icon: Icons.arrow_back_ios_new,
+                            icon: CupertinoIcons.back,
                             quality: GlassQuality.premium,
                           ),
                         ),
@@ -567,7 +568,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                             width: 48,
                             height: 48,
                             onTap: _handleShare,
-                            icon: Icons.ios_share,
+                            icon: CupertinoIcons.share,
                             iconColor: GlassColors.accentBlue,
                             shape: const LiquidRoundedRectangle(
                               borderRadius: 24,
@@ -585,7 +586,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                             width: 48,
                             height: 48,
                             onTap: _handleDelete,
-                            icon: Icons.delete_outline,
+                            icon: CupertinoIcons.delete,
                             iconColor: Colors.redAccent,
                             shape: const LiquidRoundedRectangle(
                               borderRadius: 24,
@@ -609,8 +610,8 @@ class _GalleryViewerState extends State<GalleryViewer>
                                   child: IconButton(
                                     icon: Icon(
                                       _currentItem.isFavorite
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
+                                          ? CupertinoIcons.heart_fill
+                                          : CupertinoIcons.heart,
                                       color:
                                           _currentItem.isFavorite
                                               ? Colors.red
@@ -623,7 +624,7 @@ class _GalleryViewerState extends State<GalleryViewer>
                                   Expanded(
                                     child: IconButton(
                                       icon: const Icon(
-                                        Icons.tune,
+                                        CupertinoIcons.slider_horizontal_3,
                                         color: Colors.white,
                                       ),
                                       onPressed: _openEditor,
@@ -802,15 +803,6 @@ class _VideoControlsBarState extends State<_VideoControlsBar> {
     HapticFeedback.lightImpact();
   }
 
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    if (d.inHours > 0) {
-      return '${d.inHours}:$minutes:$seconds';
-    }
-    return '$minutes:$seconds';
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
@@ -829,79 +821,81 @@ class _VideoControlsBarState extends State<_VideoControlsBar> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Progress bar
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              activeTrackColor: Colors.white,
-              inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
-              thumbColor: Colors.white,
-              overlayColor: Colors.white.withValues(alpha: 0.2),
-            ),
-            child: Slider(
-              value: progress.clamp(0.0, 1.0),
-              onChangeStart: isReady
-                  ? (v) {
-                      _isDragging = true;
-                      _dragValue = v;
-                    }
-                  : null,
-              onChanged: isReady
-                  ? (v) {
-                      setState(() => _dragValue = v);
-                    }
-                  : null,
-              onChangeEnd: isReady
-                  ? (v) {
-                      _isDragging = false;
-                      final seekTo = Duration(
-                        milliseconds: (duration.inMilliseconds * v).round(),
-                      );
-                      c.seekTo(seekTo);
-                    }
-                  : null,
-            ),
-          ),
-          // Play/Pause + Time + Mute row
+          // Play/Pause + Mute row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Play/Pause
                 GestureDetector(
                   onTap: isReady ? _togglePlayPause : null,
-                  child: Icon(
-                    isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 28,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Icon(
+                      isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                // Time
-                Text(
-                  '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const Spacer(),
                 // Mute/Unmute
                 GestureDetector(
                   onTap: isReady ? _toggleMute : null,
-                  child: Icon(
-                    _isMuted ? Icons.volume_off : Icons.volume_up,
-                    color: Colors.white,
-                    size: 24,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Icon(
+                      _isMuted ? CupertinoIcons.volume_off : CupertinoIcons.volume_up,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          // Progress bar
+          SizedBox(
+            height: 20, // constrain slider height
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 6,
+                thumbShape: SliderComponentShape.noThumb,
+                overlayShape: SliderComponentShape.noOverlay,
+                activeTrackColor: Colors.white,
+                inactiveTrackColor: Colors.white.withOpacity(0.3),
+                trackShape: const RoundedRectSliderTrackShape(),
+              ),
+              child: Slider(
+                value: progress.clamp(0.0, 1.0),
+                onChangeStart: isReady
+                    ? (v) {
+                        _isDragging = true;
+                        _dragValue = v;
+                      }
+                    : null,
+                onChanged: isReady
+                    ? (v) {
+                        setState(() => _dragValue = v);
+                      }
+                    : null,
+                onChangeEnd: isReady
+                    ? (v) {
+                        _isDragging = false;
+                        final seekTo = Duration(
+                          milliseconds: (duration.inMilliseconds * v).round(),
+                        );
+                        c.seekTo(seekTo);
+                      }
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16), // Bottom padding
         ],
       ),
     );
