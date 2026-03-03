@@ -83,6 +83,12 @@ class _GalleryViewerState extends State<GalleryViewer>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToFilmstripIndex(_currentIndex, animate: false);
       _scheduleFullResLoad(_currentIndex, delay: Duration.zero);
+      // Initialize video controller if initial page is a video
+      if (_allMedia.isNotEmpty &&
+          _currentIndex < _allMedia.length &&
+          _allMedia[_currentIndex].isVideo) {
+        _preInitializeVideo(_allMedia[_currentIndex]);
+      }
     });
   }
 
@@ -157,6 +163,7 @@ class _GalleryViewerState extends State<GalleryViewer>
     _filmstripController.dispose();
     _fadeController.dispose();
     for (final controller in _controllerPool.values) {
+      controller.pause();
       controller.dispose();
     }
     _controllerPool.clear();
@@ -211,6 +218,10 @@ class _GalleryViewerState extends State<GalleryViewer>
       if (file != null) {
         final controller = VideoPlayerController.file(file);
         await controller.initialize();
+        if (!mounted) {
+          controller.dispose();
+          return;
+        }
         _controllerPool[item.id] = controller;
         // Cleanup old
         if (_controllerPool.length > 3) {
@@ -219,6 +230,12 @@ class _GalleryViewerState extends State<GalleryViewer>
           );
           _controllerPool.remove(keyToRemove)?.dispose();
         }
+        // Auto-play if this is the currently focused video
+        if (item.id == _currentItem.id) {
+          controller.play();
+        }
+        // Rebuild so VideoPage and controls bar update
+        setState(() {});
       }
     } catch (e) {
       // Ignored
@@ -319,12 +336,23 @@ class _GalleryViewerState extends State<GalleryViewer>
               itemCount: _allMedia.length,
               physics: const ClampingScrollPhysics(),
               onPageChanged: (index) {
+                  // Fully dispose the previous video to release MediaCodec
+                  final prevItem = _allMedia[_currentIndex];
+                  if (prevItem.isVideo) {
+                    _controllerPool.remove(prevItem.id)?.dispose();
+                  }
+
                   setState(() => _currentIndex = index);
                   widget.onPageChanged?.call(index);
                   _scrollToFilmstripIndex(index);
 
                   // Schedule full-res load after swipe settles
                   _scheduleFullResLoad(index);
+
+                  // Initialize current video controller (for controls bar)
+                  if (_allMedia[index].isVideo) {
+                    _preInitializeVideo(_allMedia[index]);
+                  }
 
                   // Pre-load next video
                   if (index + 1 < _allMedia.length &&
@@ -437,6 +465,23 @@ class _GalleryViewerState extends State<GalleryViewer>
                 ),
               ),
             ),
+
+            // 2.5. Video Controls (above filmstrip, only for videos)
+            if (_currentItem.isVideo)
+              Positioned(
+                bottom: 158,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: _VideoControlsBar(
+                      controller: _controllerPool[_currentItem.id],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
 
@@ -617,68 +662,38 @@ class _VideoPage extends StatefulWidget {
 }
 
 class _VideoPageState extends State<_VideoPage> {
-  late VideoPlayerController? _activeController;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _activeController = widget.controller;
-    _initialize();
-  }
-
   @override
   void didUpdateWidget(_VideoPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller != oldWidget.controller) {
-      _activeController = widget.controller;
-      _initialize();
-    }
 
-    // Auto Play/Pause
-    if (widget.isFocused != oldWidget.isFocused &&
-        _initialized &&
-        _activeController != null) {
+    // Auto Play/Pause when focus changes
+    if (widget.isFocused != oldWidget.isFocused && _isReady) {
       if (widget.isFocused) {
-        _activeController!.play();
+        widget.controller!.play();
       } else {
-        _activeController!.pause();
-      }
-    }
-  }
-
-  Future<void> _initialize() async {
-    if (_activeController == null) {
-      // Create if missing (fallback)
-      if (widget.mediaItem.asset != null) {
-        final file = await widget.mediaItem.asset!.file;
-        if (file != null) {
-          _activeController = VideoPlayerController.file(file);
-          await _activeController!.initialize();
-        }
+        widget.controller!.pause();
       }
     }
 
-    if (mounted &&
-        _activeController != null &&
-        _activeController!.value.isInitialized) {
-      setState(() => _initialized = true);
-      if (widget.isFocused) _activeController!.play();
+    // If a new controller arrives and we're focused, auto-play
+    if (widget.controller != oldWidget.controller && _isReady && widget.isFocused) {
+      widget.controller!.play();
     }
   }
+
+  bool get _isReady =>
+      widget.controller != null && widget.controller!.value.isInitialized;
 
   @override
   void dispose() {
-    // Controller disposal handled by parent pool, unless we created a temp one here?
-    // For safety, if we created a local one (not passed in), we should dispose it.
-    // But simplistic pool logic in parent handles it for now.
+    widget.controller?.pause();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized || _activeController == null) {
-      // Thumbnail placeholder
+    if (!_isReady) {
+      // Thumbnail placeholder while controller is being initialized by pool
       if (widget.mediaItem.asset != null) {
         return ExtendedImage(
           image: AssetEntityImageProvider(
@@ -695,8 +710,199 @@ class _VideoPageState extends State<_VideoPage> {
 
     return Center(
       child: AspectRatio(
-        aspectRatio: _activeController!.value.aspectRatio,
-        child: VideoPlayer(_activeController!),
+        aspectRatio: widget.controller!.value.aspectRatio,
+        child: VideoPlayer(widget.controller!),
+      ),
+    );
+  }
+}
+
+// --- Video Controls Bar ---
+
+class _VideoControlsBar extends StatefulWidget {
+  final VideoPlayerController? controller;
+
+  const _VideoControlsBar({this.controller});
+
+  @override
+  State<_VideoControlsBar> createState() => _VideoControlsBarState();
+}
+
+class _VideoControlsBarState extends State<_VideoControlsBar> {
+  bool _isMuted = false;
+  bool _isDragging = false;
+  double _dragValue = 0.0;
+  bool _updateScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachListener(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(_VideoControlsBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      _detachListener(oldWidget.controller);
+      _attachListener(widget.controller);
+    }
+  }
+
+  @override
+  void dispose() {
+    _detachListener(widget.controller);
+    super.dispose();
+  }
+
+  void _attachListener(VideoPlayerController? c) {
+    if (c == null) return;
+    c.addListener(_onVideoUpdate);
+    _isMuted = c.value.volume == 0.0;
+  }
+
+  void _detachListener(VideoPlayerController? c) {
+    c?.removeListener(_onVideoUpdate);
+  }
+
+  void _onVideoUpdate() {
+    if (!mounted || _isDragging) return;
+    // Defer setState to avoid calling it during Flutter's layout/build phase.
+    // VideoPlayerController can fire notifications from platform channels
+    // at any point in the frame lifecycle.
+    if (!_updateScheduled) {
+      _updateScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isDragging) {
+          _updateScheduled = false;
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  void _togglePlayPause() {
+    final c = widget.controller;
+    if (c == null) return;
+    if (c.value.isPlaying) {
+      c.pause();
+    } else {
+      c.play();
+    }
+    HapticFeedback.lightImpact();
+  }
+
+  void _toggleMute() {
+    final c = widget.controller;
+    if (c == null) return;
+    setState(() {
+      _isMuted = !_isMuted;
+      c.setVolume(_isMuted ? 0.0 : 1.0);
+    });
+    HapticFeedback.lightImpact();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    final isReady = c != null && c.value.isInitialized;
+
+    final duration = isReady ? c.value.duration : Duration.zero;
+    final position = _isDragging
+        ? Duration(milliseconds: (duration.inMilliseconds * _dragValue).round())
+        : (isReady ? c.value.position : Duration.zero);
+    final progress = duration.inMilliseconds > 0
+        ? (_isDragging ? _dragValue : position.inMilliseconds / duration.inMilliseconds)
+        : 0.0;
+    final isPlaying = isReady && c.value.isPlaying;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Progress bar
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              activeTrackColor: Colors.white,
+              inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
+              thumbColor: Colors.white,
+              overlayColor: Colors.white.withValues(alpha: 0.2),
+            ),
+            child: Slider(
+              value: progress.clamp(0.0, 1.0),
+              onChangeStart: isReady
+                  ? (v) {
+                      _isDragging = true;
+                      _dragValue = v;
+                    }
+                  : null,
+              onChanged: isReady
+                  ? (v) {
+                      setState(() => _dragValue = v);
+                    }
+                  : null,
+              onChangeEnd: isReady
+                  ? (v) {
+                      _isDragging = false;
+                      final seekTo = Duration(
+                        milliseconds: (duration.inMilliseconds * v).round(),
+                      );
+                      c.seekTo(seekTo);
+                    }
+                  : null,
+            ),
+          ),
+          // Play/Pause + Time + Mute row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                // Play/Pause
+                GestureDetector(
+                  onTap: isReady ? _togglePlayPause : null,
+                  child: Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Time
+                Text(
+                  '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const Spacer(),
+                // Mute/Unmute
+                GestureDetector(
+                  onTap: isReady ? _toggleMute : null,
+                  child: Icon(
+                    _isMuted ? Icons.volume_off : Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

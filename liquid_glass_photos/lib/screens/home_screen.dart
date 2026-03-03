@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui' as ui;
 import 'package:provider/provider.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../widgets/adaptive_glass_menu.dart';
@@ -205,11 +204,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // 🔍 DIAGNOSTIC: Check rendering capabilities on each device
-    debugPrint('🔍 Impeller shader support: ${ui.ImageFilter.isShaderFilterSupported}');
-    debugPrint('🔍 Device Pixel Ratio: ${MediaQuery.of(context).devicePixelRatio}');
-    debugPrint('🔍 Screen size: ${MediaQuery.of(context).size}');
 
     // ⚡️ FIX: Selectors for UI visibility
     final isSelectMode = context.select<SelectionProvider, bool>(
